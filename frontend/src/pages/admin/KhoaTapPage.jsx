@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
+import editIcon from '../../icon/edit.png';
+import deleteIcon from '../../icon/delete.png';
+import openBookIcon from '../../icon/open-book.png';
 
 function KhoaTapPage() {
   const [courses, setCourses] = useState([]);
@@ -9,6 +13,7 @@ function KhoaTapPage() {
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ tenKhoaTap: '', soBuoi: '' });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   useEffect(() => { fetchCourses(); }, []);
 
@@ -39,9 +44,9 @@ function KhoaTapPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Bạn có chắc muốn xóa khóa tập này?')) return;
     try {
       await api.delete(`/khoa-tap/${id}`);
+      setConfirmDeleteId(null);
       fetchCourses();
     } catch (err) { alert(err.response?.data?.error || 'Không thể xóa'); }
   };
@@ -75,15 +80,15 @@ function KhoaTapPage() {
         ) : filtered.map(c => (
           <div key={c._id} className="course-card">
             <div className="course-card-header">
-              <div className="course-icon">📋</div>
+              <div className="course-icon"><img src={openBookIcon} alt="" style={{ width: 24, height: 24, filter: 'brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%)' }} /></div>
               <div className="course-actions">
-                <button className="action-btn" onClick={() => openEdit(c)} title="Sửa">✏️</button>
-                <button className="action-btn" onClick={() => handleDelete(c._id)} title="Xóa">🗑️</button>
+                <button className="action-btn" onClick={() => openEdit(c)} title="Sửa"><img src={editIcon} alt="edit" style={{ width: 20, height: 20 }} /></button>
+                <button className="action-btn" onClick={() => setConfirmDeleteId(c._id)} title="Xóa"><img src={deleteIcon} alt="delete" style={{ width: 20, height: 20 }} /></button>
               </div>
             </div>
-            <h3 className="course-name">{c.tenKhoaTap}</h3>
-            <div className="course-sessions">
-              <span className="session-badge">{c.soBuoi} buổi</span>
+            <div className="course-info-row">
+              <h3 className="course-name">{c.tenKhoaTap}</h3>
+              <span className="session-count">{c.soBuoi} buổi tập</span>
             </div>
           </div>
         ))}
@@ -106,6 +111,14 @@ function KhoaTapPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+        title="Xóa khóa tập"
+        message="Bạn có chắc chắn muốn xóa khóa tập này? Hành động này không thể hoàn tác."
+      />
 
       <style>{`
         .course-grid {
@@ -130,14 +143,13 @@ function KhoaTapPage() {
           margin-bottom: 14px;
         }
         .course-icon {
-          width: 44px;
-          height: 44px;
-          background: #EEF2FF;
-          border-radius: 10px;
+          width: 48px;
+          height: 48px;
+          background: #eff6ff;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
         }
         .course-actions {
           display: flex;
@@ -155,18 +167,21 @@ function KhoaTapPage() {
         .action-btn:hover {
           opacity: 1;
         }
+        .course-info-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
         .course-name {
           font-size: 16px;
           font-weight: 600;
-          margin-bottom: 8px;
+          margin-bottom: 0;
         }
-        .session-badge {
-          background: #D1FAE5;
-          color: #059669;
-          padding: 4px 12px;
-          border-radius: 16px;
-          font-size: 13px;
+        .session-count {
+          color: #2563eb;
+          font-size: 14px;
           font-weight: 600;
+          white-space: nowrap;
         }
         .form-group {
           margin-bottom: 16px;

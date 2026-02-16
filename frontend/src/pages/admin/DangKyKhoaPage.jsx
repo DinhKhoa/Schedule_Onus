@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import DataTable from '../../components/DataTable';
 
 function DangKyKhoaPage() {
@@ -12,6 +13,7 @@ function DangKyKhoaPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ hoiVienId: '', khoaTapId: '', ptId: '', ngayDangKy: '' });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -52,9 +54,9 @@ function DangKyKhoaPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Bạn có chắc muốn xóa đăng ký này?')) return;
     try {
       await api.delete(`/dang-ky-khoa-tap/${id}`);
+      setConfirmDeleteId(null);
       fetchAll();
     } catch (err) { alert('Không thể xóa'); }
   };
@@ -94,7 +96,7 @@ function DangKyKhoaPage() {
         <input className="input" placeholder="Tìm kiếm (tên hội viên, khóa tập, PT)..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      <DataTable columns={columns} data={filtered} onDelete={handleDelete} />
+      <DataTable columns={columns} data={filtered} onDelete={(id) => setConfirmDeleteId(id)} />
 
       <Modal isOpen={modal} onClose={() => setModal(false)} title="Thêm đăng ký khóa tập">
         <form onSubmit={handleSubmit}>
@@ -134,6 +136,14 @@ function DangKyKhoaPage() {
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
       `}</style>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+        title="Xóa đăng ký"
+        message="Bạn có chắc chắn muốn xóa đăng ký này? Hành động này không thể hoàn tác."
+      />
     </div>
   );
 }

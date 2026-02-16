@@ -14,6 +14,7 @@ function ProtectedRoute({ allowedRoles }) {
   return (
     <div className="app-layout">
       <Sidebar />
+      <div className="top-bar" />
       <div className="main-content">
         <Outlet />
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import thunderIcon from '../icon/thunder.png';
 
 function LoginPage() {
   const [soDienThoai, setSoDienThoai] = useState('');
@@ -32,7 +33,7 @@ function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <span className="logo-icon">⚡</span>
+          <span className="logo-icon"><img src={thunderIcon} alt="logo" style={{ width: 28, height: 28, filter: 'brightness(0) invert(1)' }} /></span>
         </div>
         <h1 className="login-title">Đăng nhập hệ thống</h1>
         <p className="login-subtitle">Hệ thống đặt lịch tập Onus</p>

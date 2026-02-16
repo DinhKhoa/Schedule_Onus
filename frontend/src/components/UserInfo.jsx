@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import logoutIcon from '../icon/logout.png';
 
 function UserInfo() {
   const { user, logout } = useAuth();
@@ -26,7 +27,7 @@ function UserInfo() {
         </div>
       </div>
       <button className="logout-btn" onClick={handleLogout} title="Đăng xuất">
-        🚪
+        <img src={logoutIcon} alt="logout" style={{ width: 20, height: 20 }} />
       </button>
 
       <style>{`

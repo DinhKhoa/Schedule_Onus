@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import DataTable from '../../components/DataTable';
+import editIcon from '../../icon/edit.png';
+import deleteIcon from '../../icon/delete.png';
 
 function TaiKhoanPage() {
   const [users, setUsers] = useState([]);
@@ -13,6 +16,7 @@ function TaiKhoanPage() {
     hoTen: '', soDienThoai: '', matKhau: '',
     gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong'
   });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -71,9 +75,9 @@ function TaiKhoanPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Bạn có chắc muốn xóa tài khoản này?')) return;
     try {
       await api.delete(`/users/${id}`);
+      setConfirmDeleteId(null);
       fetchUsers();
     } catch (err) { alert('Không thể xóa'); }
   };
@@ -120,8 +124,8 @@ function TaiKhoanPage() {
         data={filtered}
         renderActions={(row) => (
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="action-btn" onClick={() => openEdit(row)} title="Sửa">✏️</button>
-            <button className="action-btn" onClick={() => handleDelete(row._id)} title="Xóa">🗑️</button>
+            <button className="action-btn" onClick={() => openEdit(row)} title="Sửa"><img src={editIcon} alt="edit" style={{ width: 20, height: 20 }} /></button>
+            <button className="action-btn" onClick={() => setConfirmDeleteId(row._id)} title="Xóa"><img src={deleteIcon} alt="delete" style={{ width: 20, height: 20 }} /></button>
           </div>
         )}
       />
@@ -190,6 +194,14 @@ function TaiKhoanPage() {
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
       `}</style>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+        title="Xóa tài khoản"
+        message="Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác."
+      />
     </div>
   );
 }

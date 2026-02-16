@@ -11,7 +11,16 @@ export function AuthProvider({ children }) {
     if (token) {
       try {
         // Decode JWT payload
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        // Use decodeURIComponent to properly handle UTF-8 Vietnamese characters
+        const base64 = token.split('.')[1];
+        const payload = JSON.parse(
+          decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          )
+        );
         setUser({ id: payload.id, hoTen: payload.hoTen, vaiTro: payload.vaiTro, taiKhoan: payload.taiKhoan });
       } catch {
         logout();

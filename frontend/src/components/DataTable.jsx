@@ -1,3 +1,5 @@
+import deleteIcon from '../icon/delete.png';
+
 function DataTable({ columns, data, onDelete, renderActions }) {
   return (
     <table className="data-table">
@@ -32,7 +34,7 @@ function DataTable({ columns, data, onDelete, renderActions }) {
                       onClick={() => onDelete(row._id)}
                       title="Xóa"
                     >
-                      🗑️
+                      <img src={deleteIcon} alt="delete" style={{ width: 20, height: 20 }} />
                     </button>
                   )}
                 </td>

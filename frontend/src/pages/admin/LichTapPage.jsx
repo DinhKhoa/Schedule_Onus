@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { socketService } from '../../services/socketService';
+import deleteIcon from '../../icon/delete.png';
 
 function LichTapPage() {
   const [pts, setPts] = useState([]);
@@ -13,6 +15,7 @@ function LichTapPage() {
   const [slotForm, setSlotForm] = useState({ ngayTapId: '', gioBatDau: '', gioKetThuc: '' });
   const [dayModal, setDayModal] = useState(false);
   const [dayForm, setDayForm] = useState({ ngay: '', ptId: '' });
+  const [confirmDeleteSlotId, setConfirmDeleteSlotId] = useState(null);
 
   useEffect(() => {
     fetchPts();
@@ -74,9 +77,9 @@ function LichTapPage() {
   };
 
   const handleDeleteSlot = async (slotId) => {
-    if (!confirm('Xóa khung giờ này?')) return;
     try {
       await api.delete(`/gio-tap/${slotId}`);
+      setConfirmDeleteSlotId(null);
       fetchDays(selectedPt);
     } catch (err) { alert('Không thể xóa'); }
   };
@@ -163,7 +166,7 @@ function LichTapPage() {
                       >
                         {slotStatusLabels[slot.trangThai]}
                       </span>
-                      <button className="action-btn" onClick={() => handleDeleteSlot(slot._id)} title="Xóa">🗑️</button>
+                      <button className="action-btn" onClick={() => setConfirmDeleteSlotId(slot._id)} title="Xóa"><img src={deleteIcon} alt="delete" style={{ width: 20, height: 20 }} /></button>
                     </div>
                   ))
                 )}
@@ -265,6 +268,14 @@ function LichTapPage() {
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
       `}</style>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteSlotId}
+        onClose={() => setConfirmDeleteSlotId(null)}
+        onConfirm={() => handleDeleteSlot(confirmDeleteSlotId)}
+        title="Xóa khung giờ"
+        message="Bạn có chắc chắn muốn xóa khung giờ này? Hành động này không thể hoàn tác."
+      />
     </div>
   );
 }
