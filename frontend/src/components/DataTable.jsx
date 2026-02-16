@@ -1,0 +1,63 @@
+function DataTable({ columns, data, onDelete, renderActions }) {
+  return (
+    <table className="data-table">
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th key={col.key}>{col.label}</th>
+          ))}
+          {(onDelete || renderActions) && <th>Thao tác</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {data.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length + (onDelete || renderActions ? 1 : 0)} style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-light)' }}>
+              Không có dữ liệu
+            </td>
+          </tr>
+        ) : (
+          data.map((row, idx) => (
+            <tr key={row._id || idx}>
+              {columns.map((col) => (
+                <td key={col.key}>
+                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                </td>
+              ))}
+              {(onDelete || renderActions) && (
+                <td>
+                  {renderActions ? renderActions(row) : (
+                    <button
+                      className="btn-icon-delete"
+                      onClick={() => onDelete(row._id)}
+                      title="Xóa"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))
+        )}
+      </tbody>
+
+      <style>{`
+        .btn-icon-delete {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 18px;
+          padding: 4px 8px;
+          opacity: 0.6;
+          transition: opacity 0.2s;
+        }
+        .btn-icon-delete:hover {
+          opacity: 1;
+        }
+      `}</style>
+    </table>
+  );
+}
+
+export default DataTable;
