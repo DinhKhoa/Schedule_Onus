@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SuccessModal from '../../components/SuccessModal';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
 import openBookIcon from '../../icon/open-book.png';
@@ -14,6 +15,7 @@ function KhoaTapPage() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ tenKhoaTap: '', soBuoi: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => { fetchCourses(); }, []);
 
@@ -30,6 +32,15 @@ function KhoaTapPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.tenKhoaTap || form.tenKhoaTap.trim().length < 2) {
+      return alert('Tên khóa tập phải có ít nhất 2 ký tự');
+    }
+    if (form.tenKhoaTap.trim().length > 50) {
+      return alert('Tên khóa tập không được quá 50 ký tự');
+    }
+    if (!form.soBuoi || Number(form.soBuoi) < 1 || Number(form.soBuoi) > 40) {
+      return alert('Số buổi phải từ 1 đến 40');
+    }
     try {
       if (editId) {
         await api.put(`/khoa-tap/${editId}`, form);
@@ -48,6 +59,7 @@ function KhoaTapPage() {
       await api.delete(`/khoa-tap/${id}`);
       setConfirmDeleteId(null);
       fetchCourses();
+      setShowSuccess(true);
     } catch (err) { alert(err.response?.data?.error || 'Không thể xóa'); }
   };
 
@@ -95,19 +107,19 @@ function KhoaTapPage() {
       </div>
 
       {/* Add/Edit Modal */}
-      <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa khóa tập' : 'Thêm khóa tập'}>
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa khóa tập' : 'Thêm khóa tập mới'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Tên khóa tập</label>
-            <input className="input" value={form.tenKhoaTap} onChange={e => setForm({ ...form, tenKhoaTap: e.target.value })} required placeholder="VD: Yoga, Pilates..." />
+            <label>Tên khóa tập (2-50 ký tự)</label>
+            <input className="input" value={form.tenKhoaTap} onChange={e => setForm({ ...form, tenKhoaTap: e.target.value })} required minLength={2} maxLength={50} placeholder="VD: Yoga, Pilates..." />
           </div>
           <div className="form-group">
-            <label>Số buổi</label>
-            <input className="input" type="number" min="1" value={form.soBuoi} onChange={e => setForm({ ...form, soBuoi: e.target.value })} required placeholder="VD: 10" />
+            <label>Số buổi (1-40)</label>
+            <input className="input" type="number" min="1" max="40" value={form.soBuoi} onChange={e => setForm({ ...form, soBuoi: e.target.value })} required placeholder="VD: 10" />
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={() => setModal(false)}>Hủy</button>
-            <button type="submit" className="btn btn-primary">{editId ? 'Cập nhật' : 'Thêm mới'}</button>
+            <button type="submit" className="btn btn-primary">{editId ? 'Lưu thay đổi' : 'Thêm mới'}</button>
           </div>
         </form>
       </Modal>
@@ -116,8 +128,13 @@ function KhoaTapPage() {
         isOpen={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={() => handleDelete(confirmDeleteId)}
-        title="Xóa khóa tập"
-        message="Bạn có chắc chắn muốn xóa khóa tập này? Hành động này không thể hoàn tác."
+        title="Xác nhận xoá?"
+      />
+
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Thành công"
       />
 
       <style>{`

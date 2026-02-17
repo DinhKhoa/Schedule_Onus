@@ -33,9 +33,9 @@ function ProfilePage() {
     { label: 'Họ và tên', value: profile?.hoTen },
     { label: 'Số điện thoại', value: profile?.soDienThoai },
     { label: 'Giới tính', value: profile?.gioiTinh },
-    { label: 'Ngày sinh', value: profile?.ngaySinh ? new Date(profile.ngaySinh).toLocaleDateString('vi-VN') : '—' },
+    { label: 'Ngày sinh', value: profile?.ngaySinh ? (() => { const d = new Date(profile.ngaySinh); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : '—' },
     { label: 'Vai trò', value: profile?.vaiTro === 'HOIVIEN' ? 'Hội viên' : 'PT' },
-    { label: 'Trạng thái', value: profile?.trangThai === 'HoatDong' ? 'Hoạt động' : 'Ngưng hoạt động' }
+    { label: 'Trạng thái', value: profile?.trangThai === 'HoatDong' ? 'Active' : 'Inactive' }
   ];
 
   return (
@@ -83,7 +83,7 @@ function ProfilePage() {
                   </div>
                   <div className="enrollment-details">
                     <span>PT: {e.ptId?.hoTen || '—'}</span>
-                    <span>Đăng ký: {e.ngayDangKy ? new Date(e.ngayDangKy).toLocaleDateString('vi-VN') : '—'}</span>
+                    <span>Đăng ký: {e.ngayDangKy ? (() => { const d = new Date(e.ngayDangKy); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : '—'}</span>
                   </div>
                 </div>
               ))}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SuccessModal from '../../components/SuccessModal';
 import DataTable from '../../components/DataTable';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
@@ -17,6 +18,7 @@ function TaiKhoanPage() {
     gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong'
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -47,11 +49,32 @@ function TaiKhoanPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     // Client-side validation
+    if (!form.hoTen || form.hoTen.trim().length < 2) {
+      return alert('Họ tên phải có ít nhất 2 ký tự');
+    }
+    if (form.hoTen.trim().length > 50) {
+      return alert('Họ tên không được quá 50 ký tự');
+    }
+    if (/\d/.test(form.hoTen)) {
+      return alert('Họ tên không được chứa chữ số');
+    }
     if (!/^[0-9]{10}$/.test(form.soDienThoai)) {
       return alert('Số điện thoại phải có đúng 10 chữ số');
     }
     if (!form.ngaySinh) {
       return alert('Ngày sinh là bắt buộc');
+    }
+    // Age validation: must be >= 18
+    const birthDate = new Date(form.ngaySinh);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    if (age < 18) {
+      return alert('Người dùng phải từ 18 tuổi trở lên');
+    }
+    if (age > 100) {
+      return alert('Ngày sinh không hợp lệ');
     }
     if (!editId && (!form.matKhau || form.matKhau.length < 6)) {
       return alert('Mật khẩu phải có ít nhất 6 ký tự');
@@ -79,7 +102,17 @@ function TaiKhoanPage() {
       await api.delete(`/users/${id}`);
       setConfirmDeleteId(null);
       fetchUsers();
+      setShowSuccess(true);
     } catch (err) { alert('Không thể xóa'); }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const filtered = users.filter(u =>
@@ -88,17 +121,19 @@ function TaiKhoanPage() {
   );
 
   const columns = [
-    { key: 'hoTen', label: 'Họ tên' },
-    { key: 'soDienThoai', label: 'Số điện thoại' },
+    { key: '_index', label: 'ID', render: (v, row, idx) => idx + 1 },
+    { key: 'hoTen', label: 'Tên' },
+    { key: 'gioiTinh', label: 'Giới tính' },
+    { key: 'ngaySinh', label: 'Ngày sinh', render: (v) => formatDate(v) },
+    { key: 'soDienThoai', label: 'SĐT' },
     { key: 'vaiTro', label: 'Vai trò', render: (v) => (
-      <span className={`badge ${v === 'PT' ? 'badge-pt' : 'badge-member'}`}>
+      <span className={`role-badge ${v === 'PT' ? 'role-pt' : 'role-member'}`}>
         {v === 'PT' ? 'PT' : 'Hội viên'}
       </span>
     )},
-    { key: 'gioiTinh', label: 'Giới tính' },
     { key: 'trangThai', label: 'Trạng thái', render: (v) => (
-      <span className={`badge ${v === 'HoatDong' ? 'badge-active' : ''}`} style={v !== 'HoatDong' ? { background: '#FEE2E2', color: '#DC2626' } : {}}>
-        {v === 'HoatDong' ? 'Hoạt động' : 'Ngưng'}
+      <span className={`status-badge ${v === 'HoatDong' ? 'status-active' : 'status-inactive'}`}>
+        {v === 'HoatDong' ? 'Active' : 'Inactive'}
       </span>
     )}
   ];
@@ -116,7 +151,7 @@ function TaiKhoanPage() {
       </div>
 
       <div className="search-bar">
-        <input className="input" placeholder="Tìm kiếm (tên, SĐT)..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="input" placeholder="Tìm kiếm tài khoản..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <DataTable
@@ -133,16 +168,16 @@ function TaiKhoanPage() {
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Họ tên</label>
-            <input className="input" value={form.hoTen} onChange={e => setForm({ ...form, hoTen: e.target.value })} required />
+            <label>Họ tên (2-50 ký tự, không chứa số)</label>
+            <input className="input" value={form.hoTen} onChange={e => setForm({ ...form, hoTen: e.target.value })} required minLength={2} maxLength={50} />
           </div>
           <div className="form-group">
             <label>Số điện thoại (10 chữ số)</label>
             <input className="input" value={form.soDienThoai} onChange={e => setForm({ ...form, soDienThoai: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} required maxLength={10} pattern="[0-9]{10}" placeholder="VD: 0901000001" />
           </div>
           <div className="form-group">
-            <label>{editId ? 'Mật khẩu mới (bỏ trống nếu không đổi)' : 'Mật khẩu'}</label>
-            <input className="input" type="password" value={form.matKhau} onChange={e => setForm({ ...form, matKhau: e.target.value })} {...(!editId && { required: true })} />
+            <label>{editId ? 'Mật khẩu mới (bỏ trống nếu không đổi)' : 'Mật khẩu (ít nhất 6 ký tự)'}</label>
+            <input className="input" type="password" value={form.matKhau} onChange={e => setForm({ ...form, matKhau: e.target.value })} {...(!editId && { required: true })} minLength={6} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
@@ -153,8 +188,8 @@ function TaiKhoanPage() {
               </select>
             </div>
             <div className="form-group">
-              <label>Ngày sinh</label>
-              <input className="input" type="date" value={form.ngaySinh} onChange={e => setForm({ ...form, ngaySinh: e.target.value })} required />
+              <label>Ngày sinh (≥ 18 tuổi)</label>
+              <input className="input" type="date" value={form.ngaySinh} onChange={e => setForm({ ...form, ngaySinh: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return d.toISOString().slice(0, 10); })()} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -168,8 +203,8 @@ function TaiKhoanPage() {
             <div className="form-group">
               <label>Trạng thái</label>
               <select className="input" value={form.trangThai} onChange={e => setForm({ ...form, trangThai: e.target.value })}>
-                <option value="HoatDong">Hoạt động</option>
-                <option value="NgungHoatDong">Ngưng hoạt động</option>
+                <option value="HoatDong">Active</option>
+                <option value="NgungHoatDong">Inactive</option>
               </select>
             </div>
           </div>
@@ -186,21 +221,45 @@ function TaiKhoanPage() {
           border: none;
           cursor: pointer;
           font-size: 16px;
-          padding: 4px 6px;
           opacity: 0.5;
           transition: opacity 0.2s;
         }
         .action-btn:hover { opacity: 1; }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+        .role-badge {
+          display: inline-block;
+          padding: 4px 18px;
+          border-radius: 5px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+        }
+        .role-pt { background: #5b5bf8; }
+        .role-member { background: #7ea1ee; }
+        .status-badge {
+          display: inline-block;
+          padding: 4px 18px;
+          border-radius: 5px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+        }
+        .status-active { background: #2563eb; }
+        .status-inactive { background: #dc2626; }
       `}</style>
 
       <ConfirmModal
         isOpen={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={() => handleDelete(confirmDeleteId)}
-        title="Xóa tài khoản"
-        message="Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác."
+        title="Xác nhận xoá?"
+      />
+
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Thành công"
       />
     </div>
   );

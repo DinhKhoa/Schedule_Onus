@@ -102,7 +102,7 @@ function SchedulePage() {
                   </div>
                   <div className="schedule-pt">👤 PT: {booking.ptId?.hoTen || '—'}</div>
                   <div className="schedule-date-full">
-                    {booking.ngayTapId?.ngay ? new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                    {booking.ngayTapId?.ngay ? (() => { const d = new Date(booking.ngayTapId.ngay); return `${new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : ''}
                   </div>
                 </div>
               </div>

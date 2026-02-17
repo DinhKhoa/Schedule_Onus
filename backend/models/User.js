@@ -4,7 +4,9 @@ const userSchema = new mongoose.Schema({
   hoTen: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    minlength: [2, 'Họ tên phải có ít nhất 2 ký tự'],
+    maxlength: [50, 'Họ tên không được quá 50 ký tự']
   },
   soDienThoai: {
     type: String,
@@ -24,7 +26,17 @@ const userSchema = new mongoose.Schema({
   },
   ngaySinh: {
     type: Date,
-    required: true
+    required: true,
+    validate: {
+      validator: function(v) {
+        const today = new Date();
+        let age = today.getFullYear() - v.getFullYear();
+        const m = today.getMonth() - v.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < v.getDate())) age--;
+        return age >= 18 && age <= 100;
+      },
+      message: 'Người dùng phải từ 18 tuổi trở lên'
+    }
   },
   vaiTro: {
     type: String,

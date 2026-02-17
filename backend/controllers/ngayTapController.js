@@ -6,7 +6,13 @@ exports.getAll = async (req, res, next) => {
     const { ptId, ngay } = req.query;
     const filter = {};
     if (ptId) filter.ptId = ptId;
-    if (ngay) filter.ngay = new Date(ngay);
+    if (ngay) {
+      const start = new Date(ngay);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(ngay);
+      end.setHours(23, 59, 59, 999);
+      filter.ngay = { $gte: start, $lte: end };
+    }
 
     const days = await NgayTap.find(filter).populate('ptId', 'hoTen').sort({ ngay: -1 });
     res.json(days);

@@ -44,7 +44,7 @@ function SessionDetailPage() {
   const details = [
     { label: 'Hội viên', value: booking.hoiVienId?.hoTen || '—' },
     { label: 'Số điện thoại', value: booking.hoiVienId?.soDienThoai || '—' },
-    { label: 'Ngày tập', value: booking.ngayTapId?.ngay ? new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+    { label: 'Ngày tập', value: booking.ngayTapId?.ngay ? (() => { const d = new Date(booking.ngayTapId.ngay); return `${d.toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : '—' },
     { label: 'Khung giờ', value: `${booking.gioTapId?.gioBatDau || ''} - ${booking.gioTapId?.gioKetThuc || ''}` },
     { label: 'Khóa tập', value: booking.dangKyKhoaTapId?.khoaTapId?.tenKhoaTap || '—' },
     { label: 'Buổi còn lại', value: booking.dangKyKhoaTapId?.soBuoiConLai ?? '—' }

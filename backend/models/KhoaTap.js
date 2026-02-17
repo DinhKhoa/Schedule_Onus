@@ -10,7 +10,8 @@ const khoaTapSchema = new mongoose.Schema({
   soBuoi: {
     type: Number,
     required: true,
-    min: 1
+    min: [1, 'Số buổi phải ít nhất 1'],
+    max: [40, 'Số buổi không được quá 40']
   }
 }, {
   timestamps: true

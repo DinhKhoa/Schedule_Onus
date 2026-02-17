@@ -116,7 +116,7 @@ function DashboardPage() {
                 </div>
                 <div className="upcoming-info">
                   <div className="upcoming-date">
-                    {booking.ngayTapId?.ngay ? new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' }) : ''}
+                    {booking.ngayTapId?.ngay ? (() => { const d = new Date(booking.ngayTapId.ngay); return `${new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : ''}
                   </div>
                   <div className="upcoming-pt">PT: {booking.ptId?.hoTen || '—'}</div>
                 </div>

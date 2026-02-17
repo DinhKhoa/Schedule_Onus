@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SuccessModal from '../../components/SuccessModal';
 import DataTable from '../../components/DataTable';
 
 function DangKyKhoaPage() {
@@ -14,6 +15,7 @@ function DangKyKhoaPage() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ hoiVienId: '', khoaTapId: '', ptId: '', ngayDangKy: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -58,7 +60,17 @@ function DangKyKhoaPage() {
       await api.delete(`/dang-ky-khoa-tap/${id}`);
       setConfirmDeleteId(null);
       fetchAll();
+      setShowSuccess(true);
     } catch (err) { alert('Không thể xóa'); }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const filtered = enrollments.filter(e => {
@@ -77,7 +89,7 @@ function DangKyKhoaPage() {
     { key: 'soBuoiConLai', label: 'Buổi còn lại', render: (v) => (
       <span className="badge badge-active">{v}</span>
     )},
-    { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => v ? new Date(v).toLocaleDateString('vi-VN') : '—' }
+    { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => formatDate(v) }
   ];
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
@@ -115,15 +127,15 @@ function DangKyKhoaPage() {
             </select>
           </div>
           <div className="form-group">
+            <label>Ngày đăng ký</label>
+            <input className="input" type="date" value={form.ngayDangKy} onChange={e => setForm({ ...form, ngayDangKy: e.target.value })} required max={new Date().toISOString().slice(0, 10)} />
+          </div>
+          <div className="form-group">
             <label>PT phụ trách</label>
             <select className="input" value={form.ptId} onChange={e => setForm({ ...form, ptId: e.target.value })} required>
               <option value="">-- Chọn PT --</option>
               {pts.map(p => <option key={p._id} value={p._id}>{p.hoTen}</option>)}
             </select>
-          </div>
-          <div className="form-group">
-            <label>Ngày đăng ký</label>
-            <input className="input" type="date" value={form.ngayDangKy} onChange={e => setForm({ ...form, ngayDangKy: e.target.value })} required />
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={() => setModal(false)}>Hủy</button>
@@ -141,8 +153,13 @@ function DangKyKhoaPage() {
         isOpen={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={() => handleDelete(confirmDeleteId)}
-        title="Xóa đăng ký"
-        message="Bạn có chắc chắn muốn xóa đăng ký này? Hành động này không thể hoàn tác."
+        title="Xác nhận xoá?"
+      />
+
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message="Thành công"
       />
     </div>
   );

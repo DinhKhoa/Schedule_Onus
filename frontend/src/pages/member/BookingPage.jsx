@@ -114,7 +114,7 @@ function BookingPage() {
       {selectedDay && (
         <div className="booking-pt-info">
           <span>👤 PT: <strong>{selectedDay.ptId?.hoTen || '—'}</strong></span>
-          <span>📅 {new Date(selectedDay.ngay).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          <span>📅 {(() => { const d = new Date(selectedDay.ngay); return `${d.toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}</span>
         </div>
       )}
 

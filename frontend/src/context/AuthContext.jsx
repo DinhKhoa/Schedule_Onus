@@ -12,7 +12,10 @@ export function AuthProvider({ children }) {
       try {
         // Decode JWT payload
         // Use decodeURIComponent to properly handle UTF-8 Vietnamese characters
-        const base64 = token.split('.')[1];
+        const parts = token.split('.');
+        if (parts.length !== 3) throw new Error('Invalid token structure');
+        
+        const base64 = parts[1];
         const payload = JSON.parse(
           decodeURIComponent(
             atob(base64)
@@ -22,7 +25,8 @@ export function AuthProvider({ children }) {
           )
         );
         setUser({ id: payload.id, hoTen: payload.hoTen, vaiTro: payload.vaiTro, taiKhoan: payload.taiKhoan });
-      } catch {
+      } catch (err) {
+        console.error('Auth Context Token Error:', err);
         logout();
       }
     }

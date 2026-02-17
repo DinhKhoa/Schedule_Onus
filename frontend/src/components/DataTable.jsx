@@ -23,7 +23,7 @@ function DataTable({ columns, data, onDelete, renderActions }) {
             <tr key={row._id || idx}>
               {columns.map((col) => (
                 <td key={col.key}>
-                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                  {col.render ? col.render(row[col.key], row, idx) : row[col.key]}
                 </td>
               ))}
               {(onDelete || renderActions) && (
@@ -45,6 +45,35 @@ function DataTable({ columns, data, onDelete, renderActions }) {
       </tbody>
 
       <style>{`
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 1px solid var(--color-border, #e5e7eb);
+        }
+        .data-table thead tr {
+          background: #e2e8f0;
+        }
+        .data-table th {
+          text-align: center;
+          padding: 12px 16px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          border-bottom: 1px solid var(--color-border, #e5e7eb);
+        }
+        .data-table td {
+          padding: 12px 16px;
+          font-size: 14px;
+          color: #374151;
+          border-bottom: 1px solid var(--color-border, #e5e7eb);
+          text-align: center;
+        }
+        .data-table tbody tr:hover {
+          background: #f9fafb;
+        }
         .btn-icon-delete {
           background: none;
           border: none;

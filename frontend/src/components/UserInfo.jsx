@@ -1,6 +1,9 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import logoutIcon from '../icon/logout.png';
+import adminAvatar from '../icon/quantrivien.png';
+import maleAvatar from '../icon/nam.png';
+import femaleAvatar from '../icon/nu.png';
 
 function UserInfo() {
   const { user, logout } = useAuth();
@@ -17,10 +20,16 @@ function UserInfo() {
     HOIVIEN: 'Hội viên'
   };
 
+  const getAvatar = () => {
+    if (user?.vaiTro === 'ADMIN') return adminAvatar;
+    if (user?.gioiTinh === 'Nữ') return femaleAvatar;
+    return maleAvatar;
+  };
+
   return (
     <div className="user-info">
       <div className="user-info-details">
-        <span className="user-avatar">👤</span>
+        <img src={getAvatar()} alt="avatar" className="user-avatar-img" />
         <div>
           <div className="user-name">{user?.hoTen || user?.taiKhoan || 'User'}</div>
           <div className="user-role">{roleLabels[user?.vaiTro] || ''}</div>
@@ -43,8 +52,11 @@ function UserInfo() {
           align-items: center;
           gap: 10px;
         }
-        .user-avatar {
-          font-size: 24px;
+        .user-avatar-img {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          object-fit: cover;
         }
         .user-name {
           font-size: 14px;
