@@ -146,7 +146,7 @@ body {
 }
 
 .data-table th {
-  background: var(--color-bg);
+  background: #e2e8f0;
   font-weight: 600;
   color: var(--color-text);
 }

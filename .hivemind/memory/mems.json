@@ -1,0 +1,17 @@
+{
+  "mems": [
+    {
+      "id": "mem_1771467406345_b26d",
+      "shelf": "project-intel",
+      "content": "[brownfield-scan] project=testing-project | framework=none | stack=Unknown stack | stale=none",
+      "tags": [
+        "brownfield",
+        "scan",
+        "baseline"
+      ],
+      "session_id": "session-1771467288554-oq6och",
+      "created_at": 1771467406345
+    }
+  ],
+  "version": "1.0.0"
+}

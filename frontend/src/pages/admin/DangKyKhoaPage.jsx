@@ -83,13 +83,15 @@ function DangKyKhoaPage() {
   });
 
   const columns = [
-    { key: 'hoiVienId', label: 'Hội viên', render: (v) => v?.hoTen || '—' },
+    { key: '_index', label: 'ID', render: (v, row, idx) => idx + 1 },
+    { key: 'hoiVienId', label: 'Tên', render: (v) => v?.hoTen || '—' },
     { key: 'khoaTapId', label: 'Khóa tập', render: (v) => v?.tenKhoaTap || '—' },
-    { key: 'ptId', label: 'PT phụ trách', render: (v) => v?.hoTen || '—' },
-    { key: 'soBuoiConLai', label: 'Buổi còn lại', render: (v) => (
+    { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => formatDate(v) },
+    { key: 'khoaTapId', label: 'Tổng buổi', render: (v) => v?.soBuoi || '—' },
+    { key: 'soBuoiConLai', label: 'Còn lại', render: (v) => (
       <span className="badge badge-active">{v}</span>
     )},
-    { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => formatDate(v) }
+    { key: 'ptId', label: 'Huấn luyện viên', render: (v) => v?.hoTen || '—' }
   ];
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;

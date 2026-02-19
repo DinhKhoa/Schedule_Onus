@@ -14,7 +14,7 @@ exports.getAll = async (req, res, next) => {
       filter.ngay = { $gte: start, $lte: end };
     }
 
-    const days = await NgayTap.find(filter).populate('ptId', 'hoTen').sort({ ngay: -1 });
+    const days = await NgayTap.find(filter).sort({ ngay: -1 });
     res.json(days);
   } catch (error) {
     next(error);

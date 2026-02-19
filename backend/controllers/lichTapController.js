@@ -8,15 +8,26 @@ exports.getAll = async (req, res, next) => {
   try {
     const { hoiVienId, ptId } = req.query;
     const filter = {};
-    if (hoiVienId) filter.hoiVienId = hoiVienId;
-    if (ptId) filter.ptId = ptId;
+
+    if (hoiVienId || ptId) {
+      const enrollmentFilter = {};
+      if (hoiVienId) enrollmentFilter.hoiVienId = hoiVienId;
+      if (ptId) enrollmentFilter.ptId = ptId;
+      const enrollments = await DangKyKhoaTap.find(enrollmentFilter).select('_id');
+      filter.dangKyKhoaTapId = { $in: enrollments.map(e => e._id) };
+    }
 
     const bookings = await LichTap.find(filter)
-      .populate('hoiVienId', 'hoTen soDienThoai')
       .populate('gioTapId')
       .populate('ngayTapId')
-      .populate('ptId', 'hoTen')
-      .populate('dangKyKhoaTapId')
+      .populate({
+        path: 'dangKyKhoaTapId',
+        populate: [
+          { path: 'hoiVienId', select: 'hoTen soDienThoai' },
+          { path: 'ptId', select: 'hoTen' },
+          { path: 'khoaTapId' }
+        ]
+      })
       .sort({ createdAt: -1 });
 
     res.json(bookings);

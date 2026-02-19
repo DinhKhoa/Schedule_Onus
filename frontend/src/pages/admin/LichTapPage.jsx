@@ -22,7 +22,6 @@ function LichTapPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Thành công');
 
-  // Min date = tomorrow
   const getTomorrow = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -30,10 +29,23 @@ function LichTapPage() {
   };
 
   useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    handleDateChange(today);
     socketService.connect();
     socketService.on('slotUpdated', () => selectedDate && fetchDayData(selectedDate));
     socketService.on('slotCreated', () => selectedDate && fetchDayData(selectedDate));
     return () => { socketService.off('slotUpdated'); socketService.off('slotCreated'); };
+  }, []); // Run once on mount to set today, socket listeners might need re-binding if selectedDate changes? 
+  // actually socket listener uses selectedDate closure. If selectedDate changes, we need to update listener or better use a ref. 
+  // The original code had `[selectedDate]` dependency. I should keep that.
+
+  useEffect(() => {
+    if (selectedDate) {
+        socketService.off('slotUpdated');
+        socketService.off('slotCreated');
+        socketService.on('slotUpdated', () => fetchDayData(selectedDate));
+        socketService.on('slotCreated', () => fetchDayData(selectedDate));
+    }
   }, [selectedDate]);
 
   const fetchDayData = async (date) => {
@@ -131,7 +143,6 @@ function LichTapPage() {
   const slotStatusLabels = { Trong: 'Trống', DaDat: 'Đã đặt', DaHoanThanh: 'Xong', Tat: 'Tắt' };
   const slotStatusColors = { Trong: '#22C55E', DaDat: '#3B61F0', DaHoanThanh: '#6B7280', Tat: '#D1D5DB' };
 
-  // Combine all slots from all days into one flat list for grid display
   const allSlots = days.flatMap(day =>
     (slots[day._id] || []).map(slot => ({ ...slot, day }))
   );
@@ -149,15 +160,18 @@ function LichTapPage() {
       </div>
 
       {/* Date picker */}
-      <div className="date-picker-section">
-        <label className="date-label">Chọn ngày cần quản lý</label>
-        <input
-          className="input date-input"
-          type="date"
-          value={selectedDate}
-          min={getTomorrow()}
-          onChange={e => handleDateChange(e.target.value)}
-        />
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <label className="date-label" style={{ fontSize: 16}}>Chọn ngày cần quản lý</label>
+          <input
+            className="input date-input"
+            type="date"
+            value={selectedDate}
+            // min={getTomorrow()} // User might want to manage today or past, remov min constraint or keep based on logic
+            onChange={e => handleDateChange(e.target.value)}
+            style={{ width: 'auto' }}
+          />
+        </div>
       </div>
 
       {!selectedDate ? (
@@ -170,31 +184,45 @@ function LichTapPage() {
       ) : days.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📋</div>
-          <p>Chưa có ngày tập nào cho ngày {formatDate(selectedDate)}</p>
+          <p>Chưa có dữ liệu ngày tập cho ngày {formatDate(selectedDate)}</p>
+          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => openAddSlot(null)}>Tạo ngày mới</button>
         </div>
       ) : (
         <>
-          {/* Day status sections */}
+          {/* Section 2: Day Status */}
           {days.map(day => (
-            <div key={day._id} className="day-status-card">
-              <div className="day-status-row">
-                <div className="day-info">
-                  <span className="day-date-label">{getWeekday(day.ngay)} - {formatDate(day.ngay)}</span>
-                  {day.ptId && <span className="pt-name">PT: {day.ptId.hoTen}</span>}
-                </div>
-                <div className="day-toggle-area">
-                  <span className="toggle-label">{day.trangThai === 'HoatDong' ? 'Hoạt động' : 'Tắt'}</span>
-                  <span
+            <div key={day._id} className="card" style={{ marginBottom: 24, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                 <div style={{
+                   width: 40, height: 40, borderRadius: '50%',
+                   background: day.trangThai === 'HoatDong' ? '#dcfce7' : '#f3f4f6',
+                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                   color: day.trangThai === 'HoatDong' ? '#16a34a' : '#9ca3af',
+                   fontSize: 20
+                 }}>
+                   ⏻
+                 </div>
+                 <div>
+                   <div style={{ fontWeight: 700, fontSize: 16 }}>Trạng thái ngày &nbsp; {formatDate(day.ngay)}</div>
+                   <div style={{ fontSize: 13, color: day.trangThai === 'HoatDong' ? '#16a34a' : '#ef4444', fontWeight: 600, marginTop: 4 }}>
+                     {day.trangThai === 'HoatDong' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                   </div>
+                 </div>
+              </div>
+              <div className="toggle-wrapper">
+                 <span
                     className={`toggle ${day.trangThai === 'HoatDong' ? 'active' : ''}`}
                     onClick={() => toggleDay(day)}
                   />
-                </div>
               </div>
             </div>
           ))}
 
-          {/* Slot grid */}
-          <div className="slot-grid-title">Khung giờ tập ({allSlots.length})</div>
+          {/* Section 3: Slots */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 18, color: '#3b82f6' }}>🕒</span>
+            <span style={{ fontWeight: 600, color: '#374151' }}>Danh sách khung giờ tập</span>
+          </div>
           {allSlots.length === 0 ? (
             <div className="empty-state" style={{ padding: 24 }}>
               <p>Chưa có khung giờ nào</p>
@@ -203,28 +231,28 @@ function LichTapPage() {
             <div className="slot-grid">
               {allSlots.map(slot => (
                 <div key={slot._id} className={`slot-card ${slot.trangThai === 'Tat' ? 'slot-disabled' : ''}`}>
-                  <div className="slot-time">{slot.gioBatDau} - {slot.gioKetThuc}</div>
+                  <div className="slot-top">
+                     <span className="slot-time">{slot.gioBatDau} - {slot.gioKetThuc}</span>
+                     <button className="delete-btn-simple" onClick={() => openDeleteModal(slot)}>
+                        <img src={deleteIcon} alt="delete" />
+                     </button>
+                  </div>
+                  {/* Optional: Show status text like "Đã tắt" or "Đang hoạt động" */}
+                  <div className="slot-divider"></div>
                   <div className="slot-bottom">
-                    <span
-                      className="slot-status-badge"
-                      style={{ background: (slotStatusColors[slot.trangThai] || '#6B7280') + '20', color: slotStatusColors[slot.trangThai] || '#6B7280' }}
-                    >
-                      {slotStatusLabels[slot.trangThai]}
-                    </span>
-                    <div className="slot-actions">
-                      {(slot.trangThai === 'Trong' || slot.trangThai === 'Tat') && (
+                     <span style={{ 
+                       fontSize: 13, fontWeight: 600,
+                       color: slot.trangThai === 'Trong' ? '#16a34a' : slot.trangThai === 'Tat' ? '#ef4444' : '#6b7280'
+                     }}>
+                       {slot.trangThai === 'Trong' ? 'Đang hoạt động' : slot.trangThai === 'Tat' ? 'Đã tắt' : slotStatusLabels[slot.trangThai]}
+                     </span>
+                     {(slot.trangThai === 'Trong' || slot.trangThai === 'Tat') && (
                         <span
-                          className={`toggle toggle-sm ${slot.trangThai === 'Trong' ? 'active' : ''}`}
+                          className={`toggle ${slot.trangThai === 'Trong' ? 'active' : ''}`}
                           onClick={() => toggleSlot(slot._id)}
-                          title={slot.trangThai === 'Trong' ? 'Tắt' : 'Bật'}
                         />
                       )}
-                      <button className="action-btn" onClick={() => openDeleteModal(slot)} title="Xóa">
-                        <img src={deleteIcon} alt="delete" style={{ width: 18, height: 18 }} />
-                      </button>
-                    </div>
                   </div>
-                  {slot.day?.ptId && <div className="slot-pt">PT: {slot.day.ptId.hoTen}</div>}
                 </div>
               ))}
             </div>
@@ -293,154 +321,115 @@ function LichTapPage() {
         onClose={() => setShowSuccess(false)}
         message={successMessage}
       />
-
       <style>{`
-        .date-picker-section {
-          margin-bottom: 24px;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        .date-label {
-          font-size: 14px;
-          font-weight: 600;
-          color: #374151;
-        }
-        .date-input {
-          width: 220px;
+        .date-picker-section { display: none; } /* Legacy class cleanup if needed, but I replaced usage with .card */
+        /* Card & Layout */
+        .card {
+          background: white;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
         }
         .empty-state {
           text-align: center;
           padding: 60px 20px;
           background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
           color: #6B7280;
         }
         .empty-icon {
           font-size: 40px;
           margin-bottom: 12px;
         }
-        .day-status-card {
+
+        /* Toggle */
+        .toggle-wrapper {
+          display: flex;
+          align-items: center;
+        }
+        .toggle {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          background: #e5e7eb;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: background 0.3s;
+        }
+        .toggle.active { background: #3b82f6; }
+        .toggle::after {
+          content: "";
+          position: absolute;
+          top: 2px; left: 2px;
+          width: 20px; height: 20px;
           background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          padding: 16px 20px;
-          margin-bottom: 16px;
+          border-radius: 50%;
+          transition: transform 0.3s;
         }
-        .day-status-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .day-info {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .day-date-label {
-          font-weight: 600;
-          font-size: 15px;
-          text-transform: capitalize;
-        }
-        .pt-name {
-          font-size: 13px;
-          color: #6B7280;
-        }
-        .day-toggle-area {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .toggle-label {
-          font-size: 13px;
-          color: #6B7280;
-        }
-        .slot-grid-title {
-          font-size: 15px;
-          font-weight: 600;
-          margin-bottom: 12px;
-          color: #374151;
-        }
+        .toggle.active::after { transform: translateX(20px); }
+
+        /* Slot Grid */
         .slot-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
+          gap: 16px;
         }
         .slot-card {
           background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius);
-          padding: 14px 16px;
-          transition: box-shadow 0.2s;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 16px;
+          transition: all 0.2s;
         }
         .slot-card:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .slot-disabled {
-          opacity: 0.5;
+          opacity: 0.7;
+          background: #f9fafb;
+        }
+        .slot-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
         }
         .slot-time {
           font-weight: 700;
-          font-size: 15px;
-          margin-bottom: 10px;
+          font-size: 16px;
+          color: #1f2937;
         }
+        .delete-btn-simple {
+          background: none;
+          border: none;
+          cursor: pointer;
+          opacity: 0.4;
+          transition: opacity 0.2s;
+          padding: 4px;
+        }
+        .delete-btn-simple:hover { opacity: 1; }
+        .delete-btn-simple img { width: 18px; height: 18px; }
+
+        .slot-divider {
+          height: 1px;
+          background: #f3f4f6;
+          margin-bottom: 12px;
+        }
+
         .slot-bottom {
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-        .slot-status-badge {
-          display: inline-block;
-          padding: 3px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-        .slot-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .slot-pt {
-          font-size: 12px;
-          color: #9CA3AF;
-          margin-top: 6px;
-        }
-        .toggle-sm {
-          transform: scale(0.8);
-        }
-        .action-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 14px;
-          padding: 2px 4px;
-          opacity: 0.5;
-          transition: opacity 0.2s;
-        }
-        .action-btn:hover { opacity: 1; }
+
+        /* Form & Modal */
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
-        .radio-group {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .radio-option {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          font-size: 14px;
-        }
-        .radio-option input[type="radio"] {
-          accent-color: #2563eb;
-          width: 16px;
-          height: 16px;
-        }
+        .radio-group { display: flex; flex-direction: column; gap: 10px; }
+        .radio-option { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+        .radio-option input[type="radio"] { accent-color: #2563eb; width: 16px; height: 16px; }
 
-        /* Delete modal styles */
+        /* Delete modal overlay */
         .confirm-overlay {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
@@ -468,38 +457,12 @@ function LichTapPage() {
           color: #9ca3af;
           cursor: pointer;
         }
-        .confirm-title {
-          font-size: 17px;
-          font-weight: 600;
-          margin-bottom: 8px;
-        }
-        .confirm-message {
-          font-size: 14px;
-          color: #6B7280;
-          margin-bottom: 4px;
-        }
-        .confirm-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          margin-top: 16px;
-        }
-        .confirm-btn {
-          padding: 8px 22px;
-          border-radius: 6px;
-          border: none;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-        }
-        .confirm-btn-cancel {
-          background: #f3f4f6;
-          color: #374151;
-        }
-        .confirm-btn-delete {
-          background: #2563eb;
-          color: white;
-        }
+        .confirm-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+        .confirm-message { font-size: 14px; color: #6B7280; margin-bottom: 4px; }
+        .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+        .confirm-btn { padding: 8px 22px; border-radius: 6px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .confirm-btn-cancel { background: #f3f4f6; color: #374151; }
+        .confirm-btn-delete { background: #2563eb; color: white; }
 
         @media (max-width: 900px) {
           .slot-grid { grid-template-columns: repeat(2, 1fr); }

@@ -19,16 +19,27 @@ exports.bookSession = async (data, io) => {
   try {
     const { hoiVienId, gioTapId, ngayTapId, ptId } = data;
 
-    // Check slot availability
+    // Check slot availability (by looking for existing booking)
+    const existingBooking = await LichTap.findOne({ 
+      gioTapId, 
+      ngayTapId, 
+      trangThai: { $ne: 'DaHuy' } 
+    }).session(session);
+
+    if (existingBooking) {
+      throw { status: 400, message: 'Khung giờ này đã có người đặt' };
+    }
+
+    // Check slot exists and is active
     const slot = await GioTap.findById(gioTapId).session(session);
-    if (!slot || slot.trangThai !== 'Trong') {
+    if (!slot || slot.trangThai === 'Tat') {
       throw { status: 400, message: 'Khung giờ không khả dụng' };
     }
 
     // Check day is not in the past
     const day = await NgayTap.findById(ngayTapId).session(session);
-    if (!day || new Date(day.ngay) < new Date().setHours(0, 0, 0, 0)) {
-      throw { status: 400, message: 'Không thể đặt lịch trong quá khứ' };
+    if (!day || day.trangThai === 'Tat' || new Date(day.ngay) < new Date().setHours(0, 0, 0, 0)) {
+      throw { status: 400, message: 'Ngày tập không khả dụng hoặc trong quá khứ' };
     }
 
     // Find oldest active enrollment with remaining sessions
@@ -40,21 +51,15 @@ exports.bookSession = async (data, io) => {
       throw { status: 400, message: 'Không còn buổi tập khả dụng' };
     }
 
-    // Create booking
     const booking = await LichTap.create([{
-      hoiVienId, gioTapId, ngayTapId, ptId,
+      gioTapId, ngayTapId,
       dangKyKhoaTapId: enrollment._id,
       trangThai: 'DaDat'
     }], { session });
 
-    // Update slot status
-    slot.trangThai = 'DaDat';
-    await slot.save({ session });
-
     await session.commitTransaction();
 
-    // Emit socket event
-    if (io) io.emit('slotUpdated', { gioTapId, trangThai: 'DaDat' });
+    if (io) io.emit('slotUpdated', { gioTapId, ngayTapId, trangThai: 'DaDat' });
 
     return booking[0];
   } catch (error) {
@@ -101,12 +106,9 @@ exports.cancelSession = async (lichTapId, io) => {
     booking.trangThai = 'DaHuy';
     await booking.save({ session });
 
-    // Release slot
-    await GioTap.findByIdAndUpdate(booking.gioTapId._id, { trangThai: 'Trong' }, { session });
-
     await session.commitTransaction();
 
-    if (io) io.emit('slotUpdated', { gioTapId: booking.gioTapId._id, trangThai: 'Trong' });
+    if (io) io.emit('slotUpdated', { gioTapId: booking.gioTapId._id, ngayTapId: booking.ngayTapId._id, trangThai: 'Trong' });
 
     return { message: 'Hủy lịch tập thành công' };
   } catch (error) {
@@ -132,19 +134,14 @@ exports.completeSession = async (lichTapId, io) => {
     const booking = await LichTap.findById(lichTapId)
       .populate('gioTapId')
       .populate('ngayTapId')
+      .populate({
+          path: 'dangKyKhoaTapId',
+          populate: { path: 'hoiVienId' }
+      })
       .session(session);
 
     if (!booking || booking.trangThai === 'DaHoanThanh') {
       throw { status: 400, message: 'Lịch tập không hợp lệ hoặc đã hoàn thành' };
-    }
-
-    // Check session time has passed
-    const sessionDate = new Date(booking.ngayTapId.ngay);
-    const [hours, minutes] = booking.gioTapId.gioBatDau.split(':');
-    sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-    if (new Date() < sessionDate) {
-      throw { status: 400, message: 'Buổi tập chưa diễn ra' };
     }
 
     // Mark as completed
@@ -158,15 +155,12 @@ exports.completeSession = async (lichTapId, io) => {
       await enrollment.save({ session });
     }
 
-    // Update slot status
-    await GioTap.findByIdAndUpdate(booking.gioTapId._id, { trangThai: 'DaHoanThanh' }, { session });
-
     await session.commitTransaction();
 
-    if (io) {
+    if (io && enrollment) {
       io.emit('sessionCompleted', {
-        hoiVienId: booking.hoiVienId,
-        soBuoiConLai: enrollment ? enrollment.soBuoiConLai : 0
+        hoiVienId: enrollment.hoiVienId,
+        soBuoiConLai: enrollment.soBuoiConLai
       });
     }
 

@@ -48,7 +48,6 @@ function TaiKhoanPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Client-side validation
     if (!form.hoTen || form.hoTen.trim().length < 2) {
       return alert('Họ tên phải có ít nhất 2 ký tự');
     }
@@ -64,7 +63,6 @@ function TaiKhoanPage() {
     if (!form.ngaySinh) {
       return alert('Ngày sinh là bắt buộc');
     }
-    // Age validation: must be >= 18
     const birthDate = new Date(form.ngaySinh);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -158,7 +156,7 @@ function TaiKhoanPage() {
         columns={columns}
         data={filtered}
         renderActions={(row) => (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             <button className="action-btn" onClick={() => openEdit(row)} title="Sửa"><img src={editIcon} alt="edit" style={{ width: 20, height: 20 }} /></button>
             <button className="action-btn" onClick={() => setConfirmDeleteId(row._id)} title="Xóa"><img src={deleteIcon} alt="delete" style={{ width: 20, height: 20 }} /></button>
           </div>
@@ -228,7 +226,10 @@ function TaiKhoanPage() {
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
         .role-badge {
-          display: inline-block;
+          width: 90px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           padding: 4px 18px;
           border-radius: 5px;
           font-size: 13px;
@@ -238,7 +239,10 @@ function TaiKhoanPage() {
         .role-pt { background: #5b5bf8; }
         .role-member { background: #7ea1ee; }
         .status-badge {
-          display: inline-block;
+          width: 90px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           padding: 4px 18px;
           border-radius: 5px;
           font-size: 13px;

@@ -6,7 +6,7 @@ function DataTable({ columns, data, onDelete, renderActions }) {
       <thead>
         <tr>
           {columns.map((col) => (
-            <th key={col.key}>{col.label}</th>
+            <th key={col.key} style={{ width: col.width ? col.width : 'auto' }}>{col.label}</th>
           ))}
           {(onDelete || renderActions) && <th>Thao tác</th>}
         </tr>
@@ -54,7 +54,7 @@ function DataTable({ columns, data, onDelete, renderActions }) {
           border: 1px solid var(--color-border, #e5e7eb);
         }
         .data-table thead tr {
-          background: #e2e8f0;
+          background: #E2E8F0;
         }
         .data-table th {
           text-align: center;

@@ -5,11 +5,6 @@ const ngayTapSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  ptId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
   trangThai: {
     type: String,
     enum: ['HoatDong', 'Tat'],
@@ -19,6 +14,6 @@ const ngayTapSchema = new mongoose.Schema({
   timestamps: true
 });
 
-ngayTapSchema.index({ ngay: 1, ptId: 1 }, { unique: true });
+ngayTapSchema.index({ ngay: 1 }, { unique: true });
 
 module.exports = mongoose.model('NgayTap', ngayTapSchema, 'NgayTap');
