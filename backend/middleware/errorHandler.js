@@ -12,13 +12,20 @@ const errorHandler = (err, req, res, next) => {
 
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue || {})[0];
-    const fieldLabels = {
-      soDienThoai: 'Số điện thoại',
-      taiKhoan: 'Tài khoản',
-      tenKhoaTap: 'Tên khóa tập'
+
+    const customMessages = {
+      gioTapId: 'Lịch tập bị trùng: Khung giờ này đã được đăng ký hoặc thiết lập từ trước.',
+      ngayTapId: 'Lịch tập bị trùng: Ngày hoặc khung giờ này đã tồn tại dữ liệu.',
+      soDienThoai: 'Số điện thoại này đã được đăng ký trong hệ thống.',
+      taiKhoan: 'Tài khoản này đã tồn tại, vui lòng chọn tài khoản khác.',
+      tenKhoaTap: 'Tên khóa tập này đã có trong hệ thống.'
     };
-    const label = fieldLabels[field] || field;
-    return res.status(400).json({ error: `${label} đã tồn tại trong hệ thống` });
+
+    if (customMessages[field]) {
+      return res.status(400).json({ error: customMessages[field] });
+    }
+
+    return res.status(400).json({ error: `Dữ liệu '${field}' bị trùng lặp hoặc đã tồn tại.` });
   }
 
   res.status(err.status || 500).json({

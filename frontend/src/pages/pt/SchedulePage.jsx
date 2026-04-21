@@ -12,6 +12,7 @@ function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // Modal states
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -24,30 +25,14 @@ function SchedulePage() {
         api.get(`/lich-tap?ptId=${user.id}`)
       ]);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const dayOfWeek = today.getDay(); // 0=CN, 1=T2,...
-      
-      const thisMonday = new Date(today);
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      thisMonday.setDate(today.getDate() + diffToMonday);
-      
-      const nextSunday = new Date(thisMonday);
-      nextSunday.setDate(thisMonday.getDate() + 13); // Show 2 weeks
-
-      const availableDays = daysRes.data.filter(d =>
-        new Date(d.ngay) >= thisMonday &&
-        new Date(d.ngay) <= nextSunday
-      ).sort((a, b) => new Date(a.ngay) - new Date(b.ngay));
+      const availableDays = daysRes.data.sort((a, b) => new Date(a.ngay) - new Date(b.ngay));
 
       setDays(availableDays);
       setBookings(bookingsRes.data);
 
-      if (availableDays.length > 0) {
-        const todayStr = today.toISOString().slice(0, 10);
-        const todayDay = availableDays.find(d => d.ngay.slice(0, 10) === todayStr);
-        setSelectedDay(todayDay || availableDays[0]);
-      }
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayDay = availableDays.find(d => new Date(d.ngay).toISOString().slice(0, 10) === todayStr);
+      setSelectedDay(todayDay || { ngay: new Date().toISOString() });
     } catch (err) {
       console.error('Lỗi tải dữ liệu:', err);
     } finally {
@@ -92,9 +77,30 @@ function SchedulePage() {
     }
   };
 
-  const currentDayBookings = bookings.filter(b => b.ngayTapId?._id === selectedDay?._id);
+  const currentDayBookings = bookings.filter(b => {
+    if (selectedDay?._id) return b.ngayTapId?._id === selectedDay._id;
+    if (b.ngayTapId?.ngay && selectedDay?.ngay) {
+      return new Date(b.ngayTapId.ngay).toDateString() === new Date(selectedDay.ngay).toDateString();
+    }
+    return false;
+  });
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
+
+  const todayHelper = new Date();
+  todayHelper.setHours(0, 0, 0, 0);
+  const dayOfWeek = todayHelper.getDay();
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const mondayThisWeek = new Date(todayHelper);
+  mondayThisWeek.setDate(todayHelper.getDate() + diffToMonday + (weekOffset * 7));
+
+  const currentWeekDates = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(mondayThisWeek);
+    d.setDate(mondayThisWeek.getDate() + i);
+    return d;
+  });
+  
+  const displayMonth = currentWeekDates[0];
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -107,30 +113,30 @@ function SchedulePage() {
         <div className="calendar-container">
           <div className="calendar-header">
             <div className="calendar-month">
-               Tháng {days.length > 0 ? (() => {
-                const d = new Date(days[0].ngay);
-                return `${String(d.getMonth() + 1).padStart(2,'0')}/${d.getFullYear()}`
-              })() : ''}
+               Tháng {`${String(displayMonth.getMonth() + 1).padStart(2,'0')}/${displayMonth.getFullYear()}`}
             </div>
             <div className="calendar-nav">
-              <button className="nav-btn">&lt;</button>
-              <button className="nav-btn">&gt;</button>
+              <button className="nav-btn" onClick={() => setWeekOffset(w => w - 1)}>&lt;</button>
+              <button className="nav-btn" onClick={() => setWeekOffset(w => w + 1)}>&gt;</button>
             </div>
           </div>
 
           <div className="calendar-days-row">
-            {days.slice(0, 6).map((day) => {
-              const date = new Date(day.ngay);
-              const isSelected = selectedDay?._id === day._id;
-              const today = new Date();
-              today.setHours(0,0,0,0);
-              const isPast = date < today;
+            {currentWeekDates.map((date) => {
+              const dateStr = date.toISOString().slice(0, 10);
+              const dbDay = days.find(d => new Date(d.ngay).toISOString().slice(0, 10) === dateStr) || { ngay: dateStr };
+              
+              const isSelected = selectedDay?._id 
+                                 ? selectedDay._id === dbDay._id 
+                                 : new Date(selectedDay?.ngay).toDateString() === date.toDateString();
+                                 
+              const isPast = date < todayHelper;
 
               return (
                 <div
-                  key={day._id}
+                  key={dateStr}
                   className={`cal-day-cell ${isSelected ? 'selected' : ''} ${isPast ? 'past' : ''}`}
-                  onClick={() => handleSelectDay(day)}
+                  onClick={() => handleSelectDay(dbDay)}
                 >
                   <div className="cal-weekday">
                     {['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.getDay()]}
@@ -301,7 +307,7 @@ function SchedulePage() {
         }
         .calendar-days-row {
           display: grid;
-          grid-template-columns: repeat(6, 1fr);
+          grid-template-columns: repeat(7, 1fr);
           background: white;
         }
         .cal-day-cell {
