@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-const ProfilePage = () => {
+function ProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,144 +16,109 @@ const ProfilePage = () => {
       const { data } = await api.get(`/users/${user.id}`);
       setProfile(data);
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const roleLabel = (role) => {
-    switch (role) {
-      case 'PT': return 'Huấn luyện viên';
-      case 'HOIVIEN': return 'Hội viên';
-      default: return role;
-    }
-  };
-
-  const statusLabel = (status) => {
-    switch (status) {
-      case 'HoatDong': return 'Đang hoạt động';
-      case 'NgungHoatDong': return 'Ngưng hoạt động';
-      default: return status;
-    }
-  };
-
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
 
-  const data = profile || {};
-
-  const details = [
-    { label: 'Họ và tên', value: data.hoTen || user?.hoTen || 'Chưa cập nhật', icon: '👤' },
-    { label: 'Số điện thoại', value: data.soDienThoai || 'Chưa cập nhật', icon: '📱' },
-    { label: 'Giới tính', value: data.gioiTinh || 'Chưa cập nhật', icon: '⚧' },
-    { label: 'Ngày sinh', value: data.ngaySinh ? new Date(data.ngaySinh).toLocaleDateString('vi-VN') : 'Chưa cập nhật', icon: '🎂' },
-    { label: 'Vai trò', value: roleLabel(data.vaiTro || user?.vaiTro), icon: '🏷️', isBadge: true },
-    { label: 'Trạng thái', value: statusLabel(data.trangThai), icon: '✅', isStatus: true, status: data.trangThai }
+  const fields = [
+    { label: 'Họ và tên', value: profile?.hoTen },
+    { label: 'Số điện thoại', value: profile?.soDienThoai },
+    { label: 'Giới tính', value: profile?.gioiTinh },
+    { label: 'Ngày sinh', value: profile?.ngaySinh ? (() => { const d = new Date(profile.ngaySinh); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : '—' },
+    { label: 'Vai trò', value: profile?.vaiTro === 'PT' ? 'Huấn luyện viên' : 'Hội viên' },
+    { label: 'Trạng thái', value: profile?.trangThai === 'HoatDong' ? 'Hoạt động' : 'Ngưng hoạt động' }
   ];
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Hồ sơ Huấn luyện viên</h1>
-          <p className="page-subtitle">Thông tin cá nhân và tài khoản</p>
+          <h1 className="page-title">Hồ sơ cá nhân</h1>
+          <p className="page-subtitle">Thông tin tài khoản của bạn</p>
         </div>
       </div>
 
-      {/* Profile card */}
-      <div className="pt-profile-container">
-        <div className="pt-profile-header">
-          <div className="pt-profile-avatar">
-            {(data.hoTen || user?.hoTen || 'PT').charAt(0).toUpperCase()}
+      <div className="profile-layout">
+        {/* Profile card */}
+        <div className="profile-card">
+          <div className="profile-avatar">
+            <span>👤</span>
           </div>
-          <div className="pt-profile-name-section">
-            <h2 className="pt-profile-name">{data.hoTen || user?.hoTen}</h2>
-            <span className="badge" style={{ background: '#EEF2FF', color: '#4F46E5', fontSize: 13 }}>
-              {roleLabel(data.vaiTro || user?.vaiTro)}
-            </span>
-          </div>
-        </div>
+          <h2 style={{ marginTop: 12, fontSize: 20 }}>{profile?.hoTen}</h2>
+          <span className="badge badge-member">{profile?.vaiTro === 'PT' ? 'Huấn luyện viên' : 'Hội viên'}</span>
 
-        <div className="card" style={{ marginTop: 24, padding: 0, overflow: 'hidden' }}>
-          {details.map((d, i) => (
-            <div key={d.label} className="pt-profile-row" style={i === details.length - 1 ? { borderBottom: 'none' } : {}}>
-              <span className="pt-profile-row-icon">{d.icon}</span>
-              <span className="pt-profile-row-label">{d.label}</span>
-              <span className="pt-profile-row-value">
-                {d.isBadge ? (
-                  <span className="badge" style={{ background: '#EEF2FF', color: '#4F46E5' }}>{d.value}</span>
-                ) : d.isStatus ? (
-                  <span className="badge" style={{ 
-                    background: d.status === 'HoatDong' ? '#F0FDF4' : '#FEF2F2', 
-                    color: d.status === 'HoatDong' ? '#16A34A' : '#DC2626' 
-                  }}>
-                    {d.value}
-                  </span>
-                ) : d.value}
-              </span>
-            </div>
-          ))}
+          <div className="profile-fields">
+            {fields.map(f => (
+              <div key={f.label} className="profile-field">
+                <span className="field-label">{f.label}</span>
+                <span className="field-value">{f.value || '—'}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <style>{`
-        .pt-profile-container {
-          max-width: 600px;
-        }
-        .pt-profile-header {
+        .profile-layout {
           display: flex;
-          align-items: center;
-          gap: 20px;
-          margin-bottom: 8px;
+          justify-content: center;
+          align-items: flex-start;
+          margin-top: 24px;
         }
-        .pt-profile-avatar {
-          width: 72px;
-          height: 72px;
+        .profile-card {
+          background: white;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          padding: 28px;
+          text-align: center;
+          width: 100%;
+          max-width: 500px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .profile-avatar {
+          width: 80px;
+          height: 80px;
+          background: #EEF2FF;
           border-radius: 50%;
-          background: linear-gradient(135deg, #4F46E5, #7C3AED);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 28px;
-          font-weight: 700;
-          color: white;
-          flex-shrink: 0;
+          font-size: 36px;
+          margin: 0 auto;
         }
-        .pt-profile-name-section {
+        .profile-fields {
+          margin-top: 24px;
+          text-align: left;
+        }
+        .profile-field {
           display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .pt-profile-name {
-          font-size: 22px;
-          font-weight: 700;
-          margin: 0;
-        }
-        .pt-profile-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 24px;
+          justify-content: space-between;
+          padding: 12px 0;
           border-bottom: 1px solid var(--color-border);
           font-size: 14px;
         }
-        .pt-profile-row-icon {
-          font-size: 16px;
-          width: 24px;
-          text-align: center;
+        .profile-field:last-child {
+          border-bottom: none;
         }
-        .pt-profile-row-label {
+        .field-label {
           color: var(--color-text-light);
-          min-width: 120px;
         }
-        .pt-profile-row-value {
+        .field-value {
           font-weight: 500;
-          flex: 1;
-          text-align: right;
+        }
+        .badge-member {
+          background: #EEF2FF;
+          color: #4F46E5;
+          margin-top: 8px;
+          display: inline-block;
         }
       `}</style>
     </div>
   );
-};
+}
 
 export default ProfilePage;

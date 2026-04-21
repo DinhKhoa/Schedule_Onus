@@ -18,7 +18,7 @@ const menuConfig = {
   ],
   PT: [
     { path: '/pt', label: 'Lịch dạy', iconImg: menuIcon },
-    { path: '/pt/profile', label: 'Thông tin cá nhân', iconImg: userIcon }
+    { path: '/pt/profile', label: 'Hồ sơ', iconImg: userIcon }
   ],
   HOIVIEN: [
     { path: '/member', label: 'Trang chủ', iconImg: menuIcon },
