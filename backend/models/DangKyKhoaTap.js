@@ -30,7 +30,8 @@ const dangKyKhoaTapSchema = new mongoose.Schema({
   timestamps: true
 });
 
-dangKyKhoaTapSchema.index({ hoiVienId: 1 });
+dangKyKhoaTapSchema.index({ hoiVienId: 1, soBuoiConLai: 1 });
 dangKyKhoaTapSchema.index({ ptId: 1 });
+dangKyKhoaTapSchema.index({ khoaTapId: 1 });
 
 module.exports = mongoose.model('DangKyKhoaTap', dangKyKhoaTapSchema, 'DangKyKhoaTap');

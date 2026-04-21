@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-function SuccessModal({ isOpen, onClose, message }) {
+function SuccessModal({ isOpen, onClose, title, message }) {
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
@@ -28,7 +28,8 @@ function SuccessModal({ isOpen, onClose, message }) {
             <path d="M7 12.5l3 3 7-7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <h3 className="success-title">{message || 'Thành công'}</h3>
+        <h3 className="success-title">{title || 'Thành công'}</h3>
+        {message && <p style={{ fontSize: 14, color: '#6b7280', marginTop: 8, marginBottom: 0 }}>{message}</p>}
       </div>
 
       <style>{`

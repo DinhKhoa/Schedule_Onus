@@ -1,15 +1,21 @@
-function ConfirmModal({ isOpen, onClose, onConfirm, title, message }) {
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor }) {
   if (!isOpen) return null;
 
   return (
     <div className="confirm-overlay" onClick={onClose}>
       <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
         <button className="confirm-close-btn" onClick={onClose}>✕</button>
-        <h3 className="confirm-title">{title || 'Xác nhận xoá?'}</h3>
+        <h3 className="confirm-title">{title || 'Xác nhận?'}</h3>
         {message && <p className="confirm-message">{message}</p>}
         <div className="confirm-actions">
           <button className="confirm-btn confirm-btn-cancel" onClick={onClose}>Hủy</button>
-          <button className="confirm-btn confirm-btn-delete" onClick={onConfirm}>Xoá</button>
+          <button
+            className="confirm-btn confirm-btn-delete"
+            onClick={onConfirm}
+            style={confirmColor ? { background: confirmColor } : {}}
+          >
+            {confirmText || 'Xác nhận'}
+          </button>
         </div>
       </div>
 
@@ -93,7 +99,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message }) {
           border: none;
         }
         .confirm-btn-delete:hover {
-          background: #2d4ad4;
+          filter: brightness(0.9);
         }
       `}</style>
     </div>

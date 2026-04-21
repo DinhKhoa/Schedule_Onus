@@ -6,6 +6,8 @@ import khoatapIcon from '../icon/khoatap.png';
 import dangkykhoatapIcon from '../icon/dangkykhoatap.png';
 import taikhoanIcon from '../icon/taikhoan.png';
 import lichIcon from '../icon/lich.png';
+import menuIcon from '../icon/menu.png';
+import userIcon from '../icon/user.png';
 
 const menuConfig = {
   ADMIN: [
@@ -15,14 +17,13 @@ const menuConfig = {
     { path: '/admin/lich-tap', label: 'Quản lý lịch', iconImg: lichIcon }
   ],
   PT: [
-    { path: '/pt', label: 'Lịch dạy', icon: '📅' },
-    { path: '/pt/profile', label: 'Thông tin cá nhân', icon: '👤' }
+    { path: '/pt', label: 'Lịch dạy', iconImg: menuIcon },
+    { path: '/pt/profile', label: 'Thông tin cá nhân', iconImg: userIcon }
   ],
   HOIVIEN: [
-    { path: '/member', label: 'Trang chủ', icon: '🏠' },
-    { path: '/member/schedule', label: 'Lịch tập', icon: '📅' },
-    { path: '/member/booking', label: 'Đặt lịch', icon: '➕' },
-    { path: '/member/profile', label: 'Thông tin cá nhân', icon: '👤' }
+    { path: '/member', label: 'Trang chủ', iconImg: menuIcon },
+    { path: '/member/schedule', label: 'Lịch tập', iconImg: lichIcon },
+    { path: '/member/profile', label: 'Hồ sơ', iconImg: userIcon }
   ]
 };
 
@@ -112,22 +113,22 @@ function Sidebar() {
         .sidebar-link .sidebar-icon-img {
           width: 20px;
           height: 20px;
-          transition: filter 0.2s;
-          filter: brightness(0) saturate(100%) invert(32%) sepia(12%) saturate(776%) hue-rotate(176deg) brightness(95%) contrast(90%);
+          transition: all 0.2s;
+          filter: brightness(0) saturate(100%) invert(32%) sepia(12%) saturate(776%) hue-rotate(176deg) brightness(95%) contrast(90%) drop-shadow(0.3px 0px 0px rgba(0,0,0,0.1));
         }
         .sidebar-link:hover {
           background: #eff6ff;
           color: #2563eb;
         }
         .sidebar-link:hover .sidebar-icon-img {
-          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%);
+          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.3px 0px 0px #2563eb);
         }
         .sidebar-link.active {
           background: #eff6ff;
           color: #2563eb;
         }
         .sidebar-link.active .sidebar-icon-img {
-          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%);
+          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.5px 0px 0px #2563eb);
         }
         .sidebar-icon {
           font-size: 14px;

@@ -234,7 +234,7 @@ function TaiKhoanPage() {
           border-radius: 5px;
           font-size: 13px;
           font-weight: 600;
-          color: #fff;
+          color: #ffffff;
         }
         .role-pt { background: #5b5bf8; }
         .role-member { background: #7ea1ee; }
@@ -247,7 +247,7 @@ function TaiKhoanPage() {
           border-radius: 5px;
           font-size: 13px;
           font-weight: 600;
-          color: #fff;
+          color: #ffffff;
         }
         .status-active { background: #2563eb; }
         .status-inactive { background: #dc2626; }

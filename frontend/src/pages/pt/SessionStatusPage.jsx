@@ -1,14 +1,9 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 
-// This page redirects to SessionDetailPage since the complete action is handled there
+// This page redirects to SessionDetailPage — using <Navigate> component (React-safe)
 function SessionStatusPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
-
-  // Redirect to session detail which has the complete button
-  navigate(`/pt/session/${id}`, { replace: true });
-
-  return null;
+  return <Navigate to={`/pt/session/${id}`} replace />;
 }
 
 export default SessionStatusPage;

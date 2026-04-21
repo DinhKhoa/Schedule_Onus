@@ -53,7 +53,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-userSchema.index({ soDienThoai: 1 });
 userSchema.index({ vaiTro: 1 });
 
 module.exports = mongoose.model('User', userSchema, 'Users');

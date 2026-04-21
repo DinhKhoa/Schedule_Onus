@@ -7,7 +7,7 @@ const ngayTapSchema = new mongoose.Schema({
   },
   trangThai: {
     type: String,
-    enum: ['HoatDong', 'Tat'],
+    enum: ['HoatDong', 'NgungHoatDong'],
     default: 'HoatDong'
   }
 }, {

@@ -26,6 +26,10 @@ const lichTapSchema = new mongoose.Schema({
 });
 
 lichTapSchema.index({ dangKyKhoaTapId: 1 });
-lichTapSchema.index({ gioTapId: 1, ngayTapId: 1 }, { unique: true });
+lichTapSchema.index({ ngayTapId: 1 });
+lichTapSchema.index({ gioTapId: 1 });
+lichTapSchema.index({ hoiVienId: 1 });
+lichTapSchema.index({ ptId: 1 });
+lichTapSchema.index({ gioTapId: 1, ngayTapId: 1 }); // Removed unique constraint but kept for performance
 
 module.exports = mongoose.model('LichTap', lichTapSchema, 'LichTap');

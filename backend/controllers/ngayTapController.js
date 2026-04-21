@@ -1,11 +1,14 @@
 const NgayTap = require('../models/NgayTap');
+const { ensureNextWeekExists } = require('../services/weeklyScheduleService');
 
 // GET /api/ngay-tap
 exports.getAll = async (req, res, next) => {
   try {
-    const { ptId, ngay } = req.query;
+    // Tự động tạo lịch tuần sau nếu chưa có (On-demand)
+    await ensureNextWeekExists();
+
+    const { ngay } = req.query;
     const filter = {};
-    if (ptId) filter.ptId = ptId;
     if (ngay) {
       const start = new Date(ngay);
       start.setHours(0, 0, 0, 0);
@@ -14,7 +17,7 @@ exports.getAll = async (req, res, next) => {
       filter.ngay = { $gte: start, $lte: end };
     }
 
-    const days = await NgayTap.find(filter).sort({ ngay: -1 });
+    const days = await NgayTap.find(filter).sort({ ngay: 1 });
     res.json(days);
   } catch (error) {
     next(error);

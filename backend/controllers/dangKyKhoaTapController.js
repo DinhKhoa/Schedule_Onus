@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const DangKyKhoaTap = require('../models/DangKyKhoaTap');
 const KhoaTap = require('../models/KhoaTap');
 const User = require('../models/User');
@@ -6,15 +7,29 @@ const User = require('../models/User');
 exports.getAll = async (req, res, next) => {
   try {
     const { search } = req.query;
-    const enrollments = await DangKyKhoaTap.find()
+    const { id, vaiTro } = req.user;
+    const filter = {};
+    
+    if (vaiTro === 'HOIVIEN') {
+      try {
+        filter.hoiVienId = new mongoose.Types.ObjectId(id);
+      } catch (e) {
+        filter.hoiVienId = id;
+      }
+    }
+
+    console.log(`🔍 [DEBUG] Member ${id} is fetching enrollments. Role: ${vaiTro}. Filter:`, filter);
+
+    const enrollments = await DangKyKhoaTap.find(filter)
       .populate('hoiVienId', 'hoTen soDienThoai')
       .populate('khoaTapId', 'tenKhoaTap soBuoi')
       .populate('ptId', 'hoTen')
-      .sort({ ngayDangKy: -1 });
+      .sort({ createdAt: -1 });
 
-    // Client-side search filtering after population
+    console.log(`📊 [DEBUG] Found ${enrollments.length} enrollments for user ${id}`);
+
     let result = enrollments;
-    if (search) {
+    if (search && vaiTro === 'ADMIN') {
       const s = search.toLowerCase();
       result = enrollments.filter(e =>
         e.hoiVienId?.hoTen?.toLowerCase().includes(s) ||

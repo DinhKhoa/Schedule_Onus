@@ -30,9 +30,8 @@ function App() {
 
           {/* Member routes */}
           <Route path="/member" element={<ProtectedRoute allowedRoles={['HOIVIEN']} />}>
-            <Route index element={<MemberDashboard />} />
+            <Route index element={<MemberBooking />} />
             <Route path="schedule" element={<MemberSchedule />} />
-            <Route path="booking" element={<MemberBooking />} />
             <Route path="profile" element={<MemberProfile />} />
             <Route path="change-password" element={<MemberChangePassword />} />
           </Route>

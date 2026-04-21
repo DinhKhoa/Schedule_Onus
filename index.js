@@ -49,7 +49,7 @@ async function main() {
   await client.connect();
   console.log('Connected successfully to server');
   const db = client.db(dbName);
-  
+
   // Create unique index for username
   await db.collection('users').createIndex({ username: 1 }, { unique: true });
 

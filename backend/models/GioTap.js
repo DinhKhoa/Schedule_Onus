@@ -11,8 +11,8 @@ const gioTapSchema = new mongoose.Schema({
   },
   trangThai: {
     type: String,
-    enum: ['Trong', 'Tat'],
-    default: 'Trong'
+    enum: ['HoatDong', 'NgungHoatDong'],
+    default: 'HoatDong'
   }
 }, {
   timestamps: true

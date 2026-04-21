@@ -27,9 +27,13 @@ function DashboardPage() {
         api.get('/dang-ky-khoa-tap')
       ]);
       setBookings(bookingsRes.data);
-      // Find the user's active enrollment
-      const myEnrollment = enrollmentsRes.data?.find?.(e => e.hoiVienId?._id === user.id) || null;
-      setEnrollment(myEnrollment);
+      // Find the user's active enrollment (oldest first: by ngayDangKy then createdAt)
+      const myEnrollments = enrollmentsRes.data?.filter(e => {
+        const hvId = e.hoiVienId?._id || e.hoiVienId;
+        return hvId?.toString() === user.id?.toString() && e.soBuoiConLai > 0;
+      })?.sort((a, b) => new Date(a.ngayDangKy) - new Date(b.ngayDangKy) || new Date(a.createdAt) - new Date(b.createdAt)) || [];
+      
+      setEnrollment(myEnrollments.length > 0 ? myEnrollments[0] : null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -118,7 +122,7 @@ function DashboardPage() {
                   <div className="upcoming-date">
                     {booking.ngayTapId?.ngay ? (() => { const d = new Date(booking.ngayTapId.ngay); return `${new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : ''}
                   </div>
-                  <div className="upcoming-pt">PT: {booking.ptId?.hoTen || '—'}</div>
+                  <div className="upcoming-pt">PT: {booking.dangKyKhoaTapId?.ptId?.hoTen || '—'}</div>
                 </div>
                 <span className="badge" style={{ background: statusColors[booking.trangThai] + '20', color: statusColors[booking.trangThai] }}>
                   {statusLabels[booking.trangThai]}

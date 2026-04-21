@@ -105,7 +105,7 @@ function SchedulePage() {
                     {booking.gioTapId?.gioBatDau} - {booking.gioTapId?.gioKetThuc}
                   </div>
                   <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-                    Hội viên: {booking.hoiVienId?.hoTen || '—'}
+                    Hội viên: {booking.dangKyKhoaTapId?.hoiVienId?.hoTen || '—'}
                   </div>
                   <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, textTransform: 'capitalize' }}>
                     {booking.ngayTapId?.ngay ? new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long' }) : ''}
