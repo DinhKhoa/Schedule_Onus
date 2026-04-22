@@ -123,8 +123,11 @@ function SchedulePage() {
 
           <div className="calendar-days-row">
             {currentWeekDates.map((date) => {
-              const dateStr = date.toISOString().slice(0, 10);
-              const dbDay = days.find(d => new Date(d.ngay).toISOString().slice(0, 10) === dateStr) || { ngay: dateStr };
+              const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+              const dbDay = days.find(d => {
+                const dbD = new Date(d.ngay);
+                return `${dbD.getFullYear()}-${String(dbD.getMonth() + 1).padStart(2, '0')}-${String(dbD.getDate()).padStart(2, '0')}` === dateStr;
+              }) || { ngay: dateStr };
               
               const isSelected = selectedDay?._id 
                                  ? selectedDay._id === dbDay._id 
@@ -171,13 +174,13 @@ function SchedulePage() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 12 }}>
                     Hội viên: <span style={{ fontWeight: 500, marginLeft: 8 }}>{hvTen}</span>
                   </div>
-                  
+
                   <div className="ui-info">
-                    <span className="icon">🕒</span> 
+                    <span className="icon">🕒</span>
                     <span style={{ fontWeight: 500 }}>{booking.gioTapId?.gioBatDau} - {booking.gioTapId?.gioKetThuc}</span>
                   </div>
                   <div className="ui-info" style={{ marginBottom: 16 }}>
-                    <span className="icon">👤</span> 
+                    <span className="icon">👤</span>
                     <span style={{ color: '#4B5563' }}>{khoatap}</span>
                   </div>
 
@@ -185,7 +188,7 @@ function SchedulePage() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: isCompleted ? '#16A34A' : '#D97706' }}>
                       {isCompleted ? 'Hoàn thành' : 'Đang chờ'}
                     </span>
-                    
+
                     {isCompleted ? (
                        <div style={{ background: '#DCFCE7', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28 }}>
                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -193,7 +196,7 @@ function SchedulePage() {
                          </svg>
                        </div>
                     ) : (
-                      <button 
+                      <button
                         className="btn-hoanthanh"
                         onClick={() => {
                            setConfirmSlot(booking);
@@ -224,7 +227,7 @@ function SchedulePage() {
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 24px 0', color: '#111827' }}>
               Xác nhận hoàn thành buổi tập
             </h2>
-            
+
             <div style={{ background: '#F0FDF4', borderRadius: 8, padding: 16, display: 'flex', gap: 12, marginBottom: 24 }}>
                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -347,7 +350,10 @@ function SchedulePage() {
           color: white;
           box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
         }
-        .cal-day-cell.past { opacity: 0.5; }
+        .cal-day-cell.past { 
+          opacity: 0.6; 
+          background: #f9fafb;
+        }
         
         .slots-grid {
           display: grid;

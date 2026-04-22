@@ -3,6 +3,7 @@ import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
+import { AddIcon } from '../../components/Icons';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
 import openBookIcon from '../../icon/open-book.png';
@@ -76,7 +77,7 @@ function KhoaTapPage() {
           <h1 className="page-title">Quản lý khóa tập</h1>
           <p className="page-subtitle">Danh sách các gói tập hiện có tại phòng tập</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Thêm khóa tập</button>
+        <button className="btn btn-primary" onClick={openAdd}><AddIcon /> Thêm khóa tập</button>
       </div>
 
       <div className="search-bar">
@@ -110,12 +111,12 @@ function KhoaTapPage() {
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa khóa tập' : 'Thêm khóa tập mới'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Tên khóa tập (2-50 ký tự)</label>
-            <input className="input" value={form.tenKhoaTap} onChange={e => setForm({ ...form, tenKhoaTap: e.target.value })} required minLength={2} maxLength={50} placeholder="VD: Yoga, Pilates..." />
+            <label>Tên khóa tập</label>
+            <input className="input" value={form.tenKhoaTap} onChange={e => setForm({ ...form, tenKhoaTap: e.target.value })} required minLength={2} maxLength={50}/>
           </div>
           <div className="form-group">
-            <label>Số buổi (1-40)</label>
-            <input className="input" type="number" min="1" max="40" value={form.soBuoi} onChange={e => setForm({ ...form, soBuoi: e.target.value })} required placeholder="VD: 10" />
+            <label>Số buổi tập</label>
+            <input className="input" type="number" min="1" max="40" value={form.soBuoi} onChange={e => setForm({ ...form, soBuoi: e.target.value })} required/>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={() => setModal(false)}>Hủy</button>

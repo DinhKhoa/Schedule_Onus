@@ -36,13 +36,13 @@ exports.login = async (req, res, next) => {
     if (!isMatch) return res.status(401).json({ error: "Mật khẩu không đúng" });
 
     const token = jwt.sign(
-      { id: user._id, vaiTro: user.vaiTro, hoTen: user.hoTen },
+      { id: user._id, vaiTro: user.vaiTro, hoTen: user.hoTen, gioiTinh: user.gioiTinh },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN },
     );
     res.json({
       token,
-      user: { id: user._id, hoTen: user.hoTen, vaiTro: user.vaiTro },
+      user: { id: user._id, hoTen: user.hoTen, vaiTro: user.vaiTro, gioiTinh: user.gioiTinh },
     });
   } catch (error) {
     next(error);
@@ -51,7 +51,9 @@ exports.login = async (req, res, next) => {
 
 exports.changePassword = async (req, res, next) => {
   try {
-    const { matKhauCu, matKhauMoi } = req.body;
+    const { token, user: userData } = req.body; // In case user info is sent in body
+    const matKhauCu = req.body.matKhauCu || req.body.oldPassword;
+    const matKhauMoi = req.body.matKhauMoi || req.body.newPassword;
     const { id, vaiTro } = req.user;
 
     let account;
@@ -63,6 +65,10 @@ exports.changePassword = async (req, res, next) => {
 
     if (!account)
       return res.status(404).json({ error: "Tài khoản không tồn tại" });
+
+    if (!matKhauCu || !matKhauMoi) {
+      return res.status(400).json({ error: "Vui lòng nhập đầy đủ mật khẩu cũ và mới" });
+    }
 
     const isMatch = await bcrypt.compare(matKhauCu, account.matKhau);
     if (!isMatch)

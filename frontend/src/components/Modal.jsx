@@ -1,12 +1,12 @@
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children, hideClose = false, centerTitle = false }) {
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{title}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-header" style={centerTitle ? { justifyContent: "center" } : {}}>
+          <h3 style={centerTitle ? { textAlign: "center" } : {}}>{title}</h3>
+          {!hideClose && <button className="modal-close" onClick={onClose}>✕</button>}
         </div>
         <div className="modal-body">
           {children}

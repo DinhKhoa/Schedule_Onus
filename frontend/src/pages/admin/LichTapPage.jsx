@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Modal from "../../components/Modal";
 import SuccessModal from "../../components/SuccessModal";
+import { AddIcon } from "../../components/Icons";
 import { socketService } from "../../services/socketService";
 import deleteIcon from "../../icon/delete.png";
 import clockIcon from "../../icon/clock.png";
@@ -29,6 +30,7 @@ function LichTapPage() {
 	// Toggle slot modal (chọn kiểu tắt)
 	const [toggleModal, setToggleModal] = useState(false);
 	const [pendingToggleSlot, setPendingToggleSlot] = useState(null); // { _id, trangThai, day }
+	const [toggleScope, setToggleScope] = useState("local"); // "local" or "global"
 
 	// Warning state
 	const [warning, setWarning] = useState(null);
@@ -66,20 +68,20 @@ function LichTapPage() {
 		if (selectedDate) {
 			socketService.off("slotUpdated");
 			socketService.off("slotCreated");
-			
+
 			// Cập nhật từng slot thay vì fetch lại toàn bộ
 			socketService.on("slotUpdated", (updatedSlot) => {
 				setSlots(prev => {
 					const newSlots = { ...prev };
 					Object.keys(newSlots).forEach(dayId => {
-						newSlots[dayId] = newSlots[dayId].map(s => 
+						newSlots[dayId] = newSlots[dayId].map(s =>
 							s._id === updatedSlot._id ? updatedSlot : s
 						);
 					});
 					return newSlots;
 				});
 			});
-			
+
 			socketService.on("slotCreated", () => fetchDayData(selectedDate, true));
 		}
 	}, [selectedDate]);
@@ -135,15 +137,25 @@ function LichTapPage() {
 	// Mở modal chọn kiểu tắt khung giờ
 	const openToggleModal = (slot) => {
 		setPendingToggleSlot(slot);
+		setToggleScope("local");
 		setToggleModal(true);
+	};
+
+	const handleToggleConfirm = async () => {
+		if (toggleScope === "local") {
+			await toggleSlotForDay();
+		} else {
+			await toggleSlotGlobal();
+		}
 	};
 
 	// Tắt/bật chỉ cho ngày đang chọn
 	const toggleSlotForDay = async () => {
-		if (!pendingToggleSlot || !days[0]) return;
+		if (!pendingToggleSlot || !pendingToggleSlot.day) return;
 		const slotId = pendingToggleSlot._id;
-		const ngayTapId = days[0]._id;
+		const ngayTapId = pendingToggleSlot.day._id;
 		setToggleModal(false);
+		setLoading(true);
 
 		// Optimistic update
 		const originalSlots = { ...slots };
@@ -178,6 +190,8 @@ function LichTapPage() {
 		} catch (err) {
 			setSlots(originalSlots);
 			alert(err.response?.data?.error || "Lỗi cập nhật trạng thái");
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -186,6 +200,7 @@ function LichTapPage() {
 		if (!pendingToggleSlot) return;
 		const slotId = pendingToggleSlot._id;
 		setToggleModal(false);
+		setLoading(true);
 
 		// Optimistic update (ảnh hưởng toàn bộ rows)
 		const originalSlots = { ...slots };
@@ -209,6 +224,8 @@ function LichTapPage() {
 		} catch (err) {
 			setSlots(originalSlots);
 			alert(err.response?.data?.error || "Lỗi cập nhật trạng thái");
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -251,6 +268,7 @@ function LichTapPage() {
 		if (!deleteSlot) return;
 		const idToDelete = deleteSlot._id;
 		const originalSlots = { ...slots };
+		setLoading(true);
 
 		// 1. Optimistic Update
 		setSlots(prev => {
@@ -273,6 +291,8 @@ function LichTapPage() {
 			// Rollback on error
 			setSlots(originalSlots);
 			alert(err.response?.data?.error || "Không thể xóa");
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -318,10 +338,8 @@ function LichTapPage() {
 					</p>
 				</div>
 				{days.length > 0 && (
-					<button
-						className="btn btn-primary"
-						onClick={() => openAddSlot(days[0]._id)}>
-						+ Thêm mới
+					<button className="btn btn-primary" onClick={() => openAddSlot(days[0]._id)}>
+						<AddIcon /> Thêm mới
 					</button>
 				)}
 			</div>
@@ -524,32 +542,47 @@ function LichTapPage() {
 			<Modal
 				isOpen={toggleModal}
 				onClose={() => { setToggleModal(false); setPendingToggleSlot(null); }}
-				title="Thay đổi trạng thái khung giờ">
+				title="Tùy chọn cho hành động này"
+				hideClose={true}
+				centerTitle={true}>
 				<div style={{ padding: "8px 0" }}>
-					<p style={{ fontSize: 14, color: "#6B7280", marginBottom: 20 }}>
-						Khung giờ <strong>{pendingToggleSlot?.gioBatDau} - {pendingToggleSlot?.gioKetThuc}</strong>.
-						Bạn muốn thay đổi phạm vi nào?
-					</p>
-					<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-						<button
-							className="btn btn-primary"
-							style={{ justifyContent: "flex-start", gap: 12, padding: "14px 18px" }}
-							onClick={toggleSlotForDay}>
-							<span style={{ fontSize: 20 }}>📅</span>
-							<div style={{ textAlign: "left" }}>
-								<div style={{ fontWeight: 600 }}>Chỉ ngày {selectedDate ? new Date(selectedDate).toLocaleDateString("vi-VN") : "này"}</div>
-								<div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>Các ngày khác không bị ảnh hưởng</div>
-							</div>
-						</button>
+					<div className="form-group">
+						<div className="radio-group" style={{ display: "grid", gridTemplateColumns: "1fr"}}>
+							<label className={`radio-option-card ${toggleScope === "local" ? "active" : ""}`} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+								<input
+									type="radio"
+									name="toggleScope"
+									checked={toggleScope === "local"}
+									onChange={() => setToggleScope("local")}
+									style={{ margin: 0 }}
+								/>
+								<span style={{ fontWeight: 600 }}>Sự kiện này</span>
+							</label>
+							<label className={`radio-option-card ${toggleScope === "global" ? "active" : ""}`} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+								<input
+									type="radio"
+									name="toggleScope"
+									checked={toggleScope === "global"}
+									onChange={() => setToggleScope("global")}
+									style={{ margin: 0 }}
+								/>
+								<span style={{ fontWeight: 600 }}>Tất cả sự kiện</span>
+							</label>
+						</div>
+					</div>
+
+					<div style={{ display: "flex", gap: 12, marginTop: 24 }}>
 						<button
 							className="btn btn-outline"
-							style={{ justifyContent: "flex-start", gap: 12, padding: "14px 18px", borderColor: "#ef4444", color: "#ef4444" }}
-							onClick={toggleSlotGlobal}>
-							<span style={{ fontSize: 20 }}>🌐</span>
-							<div style={{ textAlign: "left" }}>
-								<div style={{ fontWeight: 600 }}>Toàn bộ tất cả các ngày</div>
-								<div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>Khung giờ này sẽ thay đổi vĩnh viễn</div>
-							</div>
+							style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}
+							onClick={() => setToggleModal(false)}>
+							Hủy bỏ
+						</button>
+						<button
+							className="btn btn-primary"
+							style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}
+							onClick={handleToggleConfirm}>
+							Xác nhận
 						</button>
 					</div>
 				</div>
@@ -561,50 +594,54 @@ function LichTapPage() {
 				onClose={() => setAddModal(false)}
 				title="Thêm khung giờ tập">
 				<form onSubmit={handleAddSlot}>
-					<div className="form-group">
-						<label>Giờ bắt đầu</label>
-						<input
-							className="input"
-							type="time"
-							value={addForm.gioBatDau}
-							onChange={(e) =>
-								setAddForm({ ...addForm, gioBatDau: e.target.value })
-							}
-							required
-						/>
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+						<div className="form-group">
+							<label>Giờ bắt đầu</label>
+							<input
+								className="input"
+								type="time"
+								value={addForm.gioBatDau}
+								onChange={(e) =>
+									setAddForm({ ...addForm, gioBatDau: e.target.value })
+								}
+								required
+							/>
+						</div>
+						<div className="form-group">
+							<label>Giờ kết thúc</label>
+							<input
+								className="input"
+								type="time"
+								value={addForm.gioKetThuc}
+								onChange={(e) =>
+									setAddForm({ ...addForm, gioKetThuc: e.target.value })
+								}
+								required
+							/>
+						</div>
 					</div>
 					<div className="form-group">
-						<label>Giờ kết thúc</label>
-						<input
-							className="input"
-							type="time"
-							value={addForm.gioKetThuc}
-							onChange={(e) =>
-								setAddForm({ ...addForm, gioKetThuc: e.target.value })
-							}
-							required
-						/>
-					</div>
-					<div className="form-group">
-						<label style={{ marginBottom: 10, fontWeight: 600 }}>
-							Phạm vi áp dụng
+						<label style={{ marginBottom: 12, display: "block" }}>
+							Tuỳ chọn
 						</label>
-						<div className="radio-group">
-							<label className="radio-option">
+						<div className="radio-group" style={{ display: "flex", gap: 12 }}>
+							<label className={`radio-option-card ${!addForm.applyToAll ? "active" : ""}`} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
 								<input
 									type="radio"
 									name="scope"
 									checked={!addForm.applyToAll}
 									onChange={() => setAddForm({ ...addForm, applyToAll: false })}
+									style={{ margin: 0 }}
 								/>
-								<span>Chỉ ngày này</span>
+								<span>Chỉ ngày hôm nay</span>
 							</label>
-							<label className="radio-option">
+							<label className={`radio-option-card ${addForm.applyToAll ? "active" : ""}`} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
 								<input
 									type="radio"
 									name="scope"
 									checked={addForm.applyToAll}
 									onChange={() => setAddForm({ ...addForm, applyToAll: true })}
+									style={{ margin: 0 }}
 								/>
 								<span>Tất cả các ngày</span>
 							</label>
@@ -614,73 +651,101 @@ function LichTapPage() {
 						style={{
 							display: "flex",
 							gap: 12,
-							justifyContent: "flex-end",
-							marginTop: 8,
+							marginTop: 24,
 						}}>
 						<button
 							type="button"
 							className="btn btn-outline"
+							style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}
 							onClick={() => setAddModal(false)}>
-							Hủy
+							Hủy bỏ
 						</button>
-						<button type="submit" className="btn btn-primary">
-							Thêm
+						<button type="submit" className="btn btn-primary" style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
+							Lưu khung giờ
 						</button>
 					</div>
 				</form>
 			</Modal>
 
-			{/* Custom delete modal with scope */}
-			{deleteSlot && (
-				<div className="confirm-overlay" onClick={() => setDeleteSlot(null)}>
-					<div className="confirm-box" onClick={(e) => e.stopPropagation()}>
-						<button
-							className="confirm-close-btn"
-							onClick={() => setDeleteSlot(null)}>
-							✕
-						</button>
-						<h3 className="confirm-title">Xóa khung giờ?</h3>
-						<p className="confirm-message">
-							Khung giờ:{" "}
-							<strong>
-								{deleteSlot.gioBatDau} - {deleteSlot.gioKetThuc}
-							</strong>
-						</p>
-						<div className="radio-group" style={{ margin: "16px 0" }}>
-							<label className="radio-option">
+			<Modal
+				isOpen={!!deleteSlot}
+				onClose={() => setDeleteSlot(null)}
+				title="Xóa khung giờ?">
+				<div style={{ padding: "0 4px" }}>
+					<p style={{ fontSize: 15, color: "#4B5563", marginBottom: 16 }}>
+						Bạn có chắc chắn muốn xóa khung giờ:{" "}
+						<strong style={{ color: "#ef4444" }}>
+							{deleteSlot?.gioBatDau} - {deleteSlot?.gioKetThuc}
+						</strong>
+						?
+					</p>
+
+					<div className="form-group">
+						<label
+							style={{
+								marginBottom: 12,
+								display: "block",
+								fontSize: 14,
+								fontWeight: 600,
+								color: "#374151",
+							}}>
+							Tuỳ chọn xóa
+						</label>
+						<div
+							className="radio-group"
+							style={{
+								display: "grid",
+								gridTemplateColumns: "1fr",
+								gap: 10,
+							}}>
+							<label
+								className={`radio-option-card ${!deleteAll ? "active" : ""}`}
+								style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
 								<input
 									type="radio"
 									name="deleteScope"
 									checked={!deleteAll}
 									onChange={() => setDeleteAll(false)}
+									style={{ margin: 0 }}
 								/>
-								<span>Sự kiện này</span>
+								<span>Chỉ ngày này</span>
 							</label>
-							<label className="radio-option">
+							<label
+								className={`radio-option-card ${deleteAll ? "active" : ""}`}
+								style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
 								<input
 									type="radio"
 									name="deleteScope"
 									checked={deleteAll}
 									onChange={() => setDeleteAll(true)}
+									style={{ margin: 0 }}
 								/>
-								<span>Tất cả sự kiện</span>
+								<span>Tất cả ngày</span>
 							</label>
 						</div>
-						<div className="confirm-actions">
-							<button
-								className="confirm-btn confirm-btn-cancel"
-								onClick={() => setDeleteSlot(null)}>
-								Hủy
-							</button>
-							<button
-								className="confirm-btn confirm-btn-delete"
-								onClick={handleDeleteSlot}>
-								Xoá
-							</button>
-						</div>
+					</div>
+
+					<div
+						style={{
+							display: "flex",
+							gap: 12,
+							marginTop: 24,
+						}}>
+						<button
+							className="btn btn-outline"
+							style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}
+							onClick={() => setDeleteSlot(null)}>
+							Hủy bỏ
+						</button>
+						<button
+							className="btn btn-danger"
+							style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}
+							onClick={handleDeleteSlot}>
+							Xác nhận xoá
+						</button>
 					</div>
 				</div>
-			)}
+			</Modal>
 
 			<SuccessModal
 				isOpen={showSuccess}
@@ -791,44 +856,43 @@ function LichTapPage() {
         /* Form & Modal */
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
-        .radio-group { display: flex; flex-direction: column; gap: 10px; }
-        .radio-option { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
-        .radio-option input[type="radio"] { accent-color: #2563eb; width: 16px; height: 16px; }
-
-        /* Delete modal overlay */
-        .confirm-overlay {
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(0,0,0,0.4);
+        .radio-option-card {
           display: flex;
           align-items: center;
-          justify-content: center;
-          z-index: 9999;
+          cursor: pointer;
+          padding: 8px 0;
+          transition: all 0.2s ease;
+          margin-bottom: 4px;
         }
-        .confirm-box {
-          background: white;
-          border-radius: 12px;
-          padding: 28px 32px;
-          min-width: 360px;
-          max-width: 440px;
-          position: relative;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-        }
-        .confirm-close-btn {
-          position: absolute;
-          top: 12px; right: 14px;
-          background: none;
-          border: none;
-          font-size: 18px;
-          color: #9ca3af;
+        .radio-option-card input {
+          margin-right: 12px;
+          width: 18px;
+          height: 18px;
           cursor: pointer;
         }
-        .confirm-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-        .confirm-message { font-size: 14px; color: #6B7280; margin-bottom: 4px; }
-        .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-        .confirm-btn { padding: 8px 22px; border-radius: 6px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
-        .confirm-btn-cancel { background: #f3f4f6; color: #374151; }
-        .confirm-btn-delete { background: #2563eb; color: white; }
+        .radio-content span {
+          font-size: 15px;
+          font-weight: 500;
+          color: #374151;
+          transition: all 0.2s;
+        }
+        .radio-option-card.active .radio-content span {
+          color: #2563eb;
+          font-weight: 600;
+        }
+
+        .modal-footer {
+          display: flex;
+          gap: 12px;
+          margin-top: 24px;
+        }
+        .modal-footer .btn {
+          flex: 1;
+          justify-content: center;
+          padding: 12px;
+          font-weight: 600;
+        }
+
 
         @media (max-width: 900px) {
           .slot-grid { grid-template-columns: repeat(2, 1fr); }

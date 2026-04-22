@@ -255,10 +255,6 @@ function BookingPage() {
                   return `${String(d.getMonth() + 1).padStart(2,'0')}/${d.getFullYear()}`
                 })() : ''}
               </div>
-              <div className="calendar-nav">
-                <button className="nav-btn">&lt;</button>
-                <button className="nav-btn">&gt;</button>
-              </div>
             </div>
 
             <div className="calendar-days-row">
@@ -382,28 +378,6 @@ function BookingPage() {
         .calendar-month {
           font-size: 16px;
           font-weight: 700;
-          color: #111827;
-        }
-        .calendar-nav {
-          display: flex;
-          gap: 12px;
-        }
-        .nav-btn {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          border: none;
-          background: none;
-          font-size: 16px;
-          font-weight: 600;
-          color: #6B7280;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .nav-btn:hover {
-          background: #F3F4F6;
           color: #111827;
         }
         .calendar-days-row {

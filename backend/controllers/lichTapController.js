@@ -1,6 +1,7 @@
 const LichTap = require('../models/LichTap');
 const GioTap = require('../models/GioTap');
 const DangKyKhoaTap = require('../models/DangKyKhoaTap');
+const NgayTap = require('../models/NgayTap');
 const bookingService = require('../services/bookingService');
 
 // GET /api/lich-tap
@@ -15,6 +16,19 @@ exports.getAll = async (req, res, next) => {
       if (ptId) enrollmentFilter.ptId = ptId;
       const enrollments = await DangKyKhoaTap.find(enrollmentFilter).select('_id');
       filter.dangKyKhoaTapId = { $in: enrollments.map(e => e._id) };
+    }
+
+    if (req.user && req.user.vaiTro === 'HOIVIEN') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+      const futureDays = await NgayTap.find({ ngay: { $gte: today, $lte: nextWeek } }).select('_id');
+      if (filter.ngayTapId) {
+        filter.ngayTapId.$in = filter.ngayTapId.$in.filter(id => futureDays.some(d => d._id.equals(id)));
+      } else {
+        filter.ngayTapId = { $in: futureDays.map(d => d._id) };
+      }
     }
 
     const bookings = await LichTap.find(filter)

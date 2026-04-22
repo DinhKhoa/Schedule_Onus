@@ -4,6 +4,7 @@ import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
 import DataTable from '../../components/DataTable';
+import { AddIcon } from '../../components/Icons';
 
 function DangKyKhoaPage() {
   const [enrollments, setEnrollments] = useState([]);
@@ -88,9 +89,7 @@ function DangKyKhoaPage() {
     { key: 'khoaTapId', label: 'Khóa tập', render: (v) => v?.tenKhoaTap || '—' },
     { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => formatDate(v) },
     { key: 'khoaTapId', label: 'Tổng buổi', render: (v) => v?.soBuoi || '—' },
-    { key: 'soBuoiConLai', label: 'Còn lại', render: (v) => (
-      <span className="badge badge-active">{v}</span>
-    )},
+    { key: 'soBuoiConLai', label: 'Còn lại', render: (v) => v },
     { key: 'ptId', label: 'Huấn luyện viên', render: (v) => v?.hoTen || '—' }
   ];
 
@@ -103,7 +102,9 @@ function DangKyKhoaPage() {
           <h1 className="page-title">Quản lý đăng ký khoá</h1>
           <p className="page-subtitle">Danh sách đăng ký khoá tập của hội viên</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Thêm mới</button>
+                <button className="btn btn-primary" onClick={openAdd}>
+          <AddIcon /> Thêm mới
+        </button>
       </div>
 
       <div className="search-bar">

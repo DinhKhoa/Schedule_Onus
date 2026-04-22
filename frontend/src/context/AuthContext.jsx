@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
         // Use decodeURIComponent to properly handle UTF-8 Vietnamese characters
         const parts = token.split('.');
         if (parts.length !== 3) throw new Error('Invalid token structure');
-        
+
         const base64 = parts[1];
         const payload = JSON.parse(
           decodeURIComponent(
@@ -24,7 +24,13 @@ export function AuthProvider({ children }) {
               .join('')
           )
         );
-        setUser({ id: payload.id, hoTen: payload.hoTen, vaiTro: payload.vaiTro, taiKhoan: payload.taiKhoan });
+        setUser({
+          id: payload.id,
+          hoTen: payload.hoTen,
+          vaiTro: payload.vaiTro,
+          taiKhoan: payload.taiKhoan,
+          gioiTinh: payload.gioiTinh
+        });
       } catch (err) {
         console.error('Auth Context Token Error:', err);
         logout();
@@ -39,6 +45,10 @@ export function AuthProvider({ children }) {
     setUser(userData);
   };
 
+  const updateUser = (userData) => {
+    setUser(prev => ({ ...prev, ...userData }));
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -46,7 +56,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

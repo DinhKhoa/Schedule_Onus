@@ -4,6 +4,7 @@ import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
 import DataTable from '../../components/DataTable';
+import { AddIcon } from '../../components/Icons';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
 
@@ -14,7 +15,7 @@ function TaiKhoanPage() {
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
-    hoTen: '', soDienThoai: '', matKhau: '',
+    hoTen: '', soDienThoai: '',
     gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong'
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -32,14 +33,14 @@ function TaiKhoanPage() {
 
   const openAdd = () => {
     setEditId(null);
-    setForm({ hoTen: '', soDienThoai: '', matKhau: '', gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong' });
+    setForm({ hoTen: '', soDienThoai: '', gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong' });
     setModal(true);
   };
 
   const openEdit = (u) => {
     setEditId(u._id);
     setForm({
-      hoTen: u.hoTen, soDienThoai: u.soDienThoai, matKhau: '',
+      hoTen: u.hoTen, soDienThoai: u.soDienThoai,
       gioiTinh: u.gioiTinh || 'Nam', ngaySinh: u.ngaySinh ? u.ngaySinh.slice(0, 10) : '',
       vaiTro: u.vaiTro, trangThai: u.trangThai
     });
@@ -74,15 +75,12 @@ function TaiKhoanPage() {
     if (age > 100) {
       return alert('Ngày sinh không hợp lệ');
     }
-    if (!editId && (!form.matKhau || form.matKhau.length < 6)) {
-      return alert('Mật khẩu phải có ít nhất 6 ký tự');
-    }
-    if (editId && form.matKhau && form.matKhau.length < 6) {
-      return alert('Mật khẩu phải có ít nhất 6 ký tự');
-    }
     try {
       const payload = { ...form };
-      if (editId && !payload.matKhau) delete payload.matKhau;
+      if (!editId) {
+        // Mật khẩu mặc định là số điện thoại khi tạo mới
+        payload.matKhau = form.soDienThoai;
+      }
       if (editId) {
         await api.put(`/users/${editId}`, payload);
       } else {
@@ -145,7 +143,7 @@ function TaiKhoanPage() {
           <h1 className="page-title">Quản lý tài khoản</h1>
           <p className="page-subtitle">Danh sách tài khoản có tại phòng tập</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Thêm mới</button>
+        <button className="btn btn-primary" onClick={openAdd}><AddIcon /> Thêm mới</button>
       </div>
 
       <div className="search-bar">
@@ -166,17 +164,14 @@ function TaiKhoanPage() {
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Họ tên (2-50 ký tự, không chứa số)</label>
+            <label>Họ và tên</label>
             <input className="input" value={form.hoTen} onChange={e => setForm({ ...form, hoTen: e.target.value })} required minLength={2} maxLength={50} />
           </div>
           <div className="form-group">
-            <label>Số điện thoại (10 chữ số)</label>
-            <input className="input" value={form.soDienThoai} onChange={e => setForm({ ...form, soDienThoai: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} required maxLength={10} pattern="[0-9]{10}" placeholder="VD: 0901000001" />
+            <label>Số điện thoại</label>
+            <input className="input" value={form.soDienThoai} onChange={e => setForm({ ...form, soDienThoai: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} required maxLength={10} pattern="[0-9]{10}"/>
           </div>
-          <div className="form-group">
-            <label>{editId ? 'Mật khẩu mới (bỏ trống nếu không đổi)' : 'Mật khẩu (ít nhất 6 ký tự)'}</label>
-            <input className="input" type="password" value={form.matKhau} onChange={e => setForm({ ...form, matKhau: e.target.value })} {...(!editId && { required: true })} minLength={6} />
-          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label>Giới tính</label>
@@ -186,7 +181,7 @@ function TaiKhoanPage() {
               </select>
             </div>
             <div className="form-group">
-              <label>Ngày sinh (≥ 18 tuổi)</label>
+              <label>Ngày sinh</label>
               <input className="input" type="date" value={form.ngaySinh} onChange={e => setForm({ ...form, ngaySinh: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return d.toISOString().slice(0, 10); })()} />
             </div>
           </div>
@@ -198,13 +193,17 @@ function TaiKhoanPage() {
                 <option value="PT">PT</option>
               </select>
             </div>
-            <div className="form-group">
-              <label>Trạng thái</label>
-              <select className="input" value={form.trangThai} onChange={e => setForm({ ...form, trangThai: e.target.value })}>
-                <option value="HoatDong">Active</option>
-                <option value="NgungHoatDong">Inactive</option>
-              </select>
-            </div>
+            {editId ? (
+              <div className="form-group">
+                <label>Trạng thái</label>
+                <select className="input" value={form.trangThai} onChange={e => setForm({ ...form, trangThai: e.target.value })}>
+                  <option value="HoatDong">Active</option>
+                  <option value="NgungHoatDong">Inactive</option>
+                </select>
+              </div>
+            ) : (
+              <div className="form-group"></div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={() => setModal(false)}>Hủy</button>

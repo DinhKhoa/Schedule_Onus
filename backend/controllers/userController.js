@@ -129,6 +129,39 @@ exports.update = async (req, res, next) => {
   }
 };
 
+// PUT /api/users/profile (Self-update)
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { hoTen, soDienThoai, gioiTinh, ngaySinh } = req.body;
+    
+    const updates = {};
+    if (hoTen) updates.hoTen = hoTen.trim();
+    if (gioiTinh) updates.gioiTinh = gioiTinh;
+    if (ngaySinh) updates.ngaySinh = ngaySinh;
+    
+    if (soDienThoai) {
+      if (!/^[0-9]{10}$/.test(soDienThoai)) {
+        return res.status(400).json({ error: 'Số điện thoại phải có đúng 10 chữ số' });
+      }
+      const existing = await User.findOne({ soDienThoai, _id: { $ne: userId } });
+      if (existing) {
+        return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
+      }
+      updates.soDienThoai = soDienThoai;
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true }).select('-matKhau');
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    res.json(user);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
+    }
+    next(error);
+  }
+};
+
 // DELETE /api/users/:id
 exports.remove = async (req, res, next) => {
   try {
