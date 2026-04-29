@@ -42,9 +42,15 @@ const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
   const io = initSocket(server);
-  app.set('io', io); // make io accessible in controllers via req.app.get('io')
+  app.set('io', io);
 
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  // CHỈ chạy server.listen nếu KHÔNG phải môi trường Vercel
+  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }
 });
+
+// Quan trọng: Export app để Vercel sử dụng
+module.exports = app;

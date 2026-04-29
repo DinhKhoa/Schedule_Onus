@@ -6,7 +6,7 @@
       "destination": "/backend/server.js"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api|static|.*\\..*).*)",
       "destination": "/frontend/index.html"
     }
   ]
