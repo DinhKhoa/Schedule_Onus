@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
+const Enrollment = require('../models/Enrollment');
 
 // GET /api/users/profile
 exports.getProfile = async (req, res, next) => {
@@ -200,7 +201,18 @@ exports.updateProfile = async (req, res, next) => {
 // DELETE /api/users/:id
 exports.remove = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const userId = req.params.id;
+    
+    // Check if user is linked to any enrollment (either as member or trainer)
+    const hasEnrollments = await Enrollment.findOne({
+      $or: [{ memberId: userId }, { trainerId: userId }]
+    });
+    
+    if (hasEnrollments) {
+      return res.status(400).json({ error: 'Không thể xóa người dùng này vì đang có dữ liệu liên quan đến khóa tập/lịch dạy. Vui lòng kiểm tra lại.' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     res.json({ message: 'Xóa tài khoản thành công' });
   } catch (error) {

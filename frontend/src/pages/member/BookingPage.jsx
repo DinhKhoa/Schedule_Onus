@@ -117,7 +117,7 @@ function BookingPage() {
   };
 
   const handleSlotClick = (slot) => {
-    if (slot.myBookingId && slot.status === 'Booked') {
+    if (slot.myBookingId && (slot.status === 'Booked' || slot.status === 'PendingTrainerConfirm')) {
       setCancelSlot(slot);
       setCancelOpen(true);
       setError({ show: false, message: '' });
@@ -142,7 +142,7 @@ function BookingPage() {
     setBooking(true);
 
     setSlots(prev => prev.map(s =>
-      s._id === slotId ? { ...s, status: 'Booked', myBookingId: 'temp-id' } : s
+      s._id === slotId ? { ...s, status: 'PendingTrainerConfirm', myBookingId: 'temp-id' } : s
     ));
     if (enrollment) {
       setEnrollment(prev => ({ ...prev, remainingSessions: prev.remainingSessions - 1 }));
@@ -272,24 +272,42 @@ function BookingPage() {
               slots.map(slot => {
                 const isMine = !!slot.myBookingId;
                 const isAvailable = slot.status === 'Active' && enrollment;
-                const isBooked = slot.status === 'Booked' || slot.status === 'Completed';
-                const canClick = isAvailable || (isMine && slot.status === 'Booked');
+                const isPending = slot.status === 'PendingTrainerConfirm';
+                const isConfirmed = slot.status === 'Booked';
+                const isCompleted = slot.status === 'Completed';
+                const isBooked = isPending || isConfirmed || isCompleted;
+                const canClick = isAvailable || (isMine && (isConfirmed || isPending));
 
                 return (
                   <div
                     key={slot._id}
-                    className={`slot-card ${isBooked ? 'booked' : ''} ${canClick ? 'clickable' : ''} ${isMine ? 'mine' : ''}`}
+                    className={`slot-card ${isBooked ? 'booked' : ''} ${canClick ? 'clickable' : ''} ${isMine ? 'mine' : ''} ${isMine && isConfirmed ? 'confirmed' : ''} ${isMine && isCompleted ? 'completed' : ''} ${isMine && isPending ? 'pending' : ''}`}
                     onClick={() => canClick && handleSlotClick(slot)}
                   >
-                    <div className="slot-time" style={{ color: isBooked ? '#9CA3AF' : '#111827' }}>
+                    <div className="slot-time" style={{ color: isBooked && !isMine ? '#9CA3AF' : '#111827' }}>
                       {slot.startTime} - {slot.endTime}
                     </div>
                     {isBooked && !isMine && (
                       <div className="slot-status" style={{ marginTop: 4, color: '#9CA3AF', fontSize: 13 }}>
-                        Đã đặt
+                        Đã được đặt
                       </div>
                     )}
-                    {isMine && slot.status === 'Booked' && (
+                    {isMine && isPending && (
+                      <div className="slot-status" style={{ marginTop: 4, color: '#D97706', fontSize: 10, fontWeight: 500 }}>
+                        CHỜ XÁC NHẬN
+                      </div>
+                    )}
+                    {isMine && isConfirmed && (
+                      <div className="slot-status" style={{ marginTop: 4, color: '#2563EB', fontSize: 10, fontWeight: 500 }}>
+                        ĐÃ XÁC NHẬN
+                      </div>
+                    )}
+                    {isMine && isCompleted && (
+                      <div className="slot-status" style={{ marginTop: 4, color: '#16A34A', fontSize: 10, fontWeight: 500 }}>
+                        HOÀN THÀNH
+                      </div>
+                    )}
+                    {isMine && (isConfirmed || isPending) && (
                       <div className="slot-hint cancel">Nhấn để hủy</div>
                     )}
                   </div>
@@ -346,10 +364,14 @@ function BookingPage() {
         .cal-date-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #111827; }
         .cal-date-circle.selected { background: #2563EB; color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); }
         .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-        .slot-card { border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; transition: all 0.2s; position: relative; }
-        .slot-card.clickable:hover { border-color: #3B82F6; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1); }
+        .slot-card { width: 204.31px; height: 82.4px; box-sizing: border-box; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; transition: all 0.2s; position: relative; }
+        .slot-card.clickable:hover { border-color: #111827; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .slot-card.mine.pending.clickable:hover { border-color: #F59E0B; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2); }
+        .slot-card.mine.confirmed.clickable:hover { border-color: #2563EB; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
         .slot-card.booked { background: #F9FAFB; border-color: transparent; }
-        .slot-card.mine { border-color: #EF4444; background: #FEF2F2; }
+        .slot-card.mine.pending { border-color: #F59E0B; background: #FFFBEB; }
+        .slot-card.mine.confirmed { border-color: #2563EB; background: #EFF6FF; }
+        .slot-card.mine.completed { border-color: #16A34A; background: #DCFCE7; }
         .slot-time { font-size: 15px; font-weight: 600; }
         .slot-hint.cancel { position: absolute; top: -10px; right: -10px; background: #EF4444; color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; opacity: 0; transition: opacity 0.2s; }
         .slot-card.mine:hover .slot-hint.cancel { opacity: 1; }

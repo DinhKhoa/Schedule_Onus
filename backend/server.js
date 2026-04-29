@@ -18,12 +18,11 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(null, true); // Allow all for now
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -32,7 +31,8 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
-app.use('/api', routes);
+// Hỗ trợ cả đường dẫn có /api và không có /api (cho Vercel)
+app.use(['/api', '/'], routes);
 
 // Error handler
 app.use(errorHandler);
@@ -44,7 +44,6 @@ connectDB().then(() => {
   const io = initSocket(server);
   app.set('io', io);
 
-  // CHỈ chạy server.listen nếu KHÔNG phải môi trường Vercel
   if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
@@ -52,5 +51,4 @@ connectDB().then(() => {
   }
 });
 
-// Quan trọng: Export app để Vercel sử dụng
 module.exports = app;

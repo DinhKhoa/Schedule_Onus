@@ -18,8 +18,8 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Booked', 'Completed', 'Cancelled'],
-    default: 'Booked'
+    enum: ['PendingTrainerConfirm', 'Booked', 'Completed', 'Cancelled', 'Rejected'],
+    default: 'PendingTrainerConfirm'
   }
 }, {
   timestamps: true

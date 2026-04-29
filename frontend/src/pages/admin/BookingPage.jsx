@@ -9,6 +9,8 @@ import deleteIcon from "../../icon/delete.png";
 import clockIcon from "../../icon/clock.png";
 import onOffIcon from "../../icon/on-off-button.png";
 
+import { getLocalDateString } from "../../utils/dateUtils";
+
 function BookingPage() {
 	const [selectedDate, setSelectedDate] = useState("");
 	const [selectedTrainerId, setSelectedTrainerId] = useState("");
@@ -38,7 +40,7 @@ function BookingPage() {
 	const [error, setError] = useState({ show: false, message: '' });
 
 	useEffect(() => {
-		const today = new Date().toISOString().slice(0, 10);
+		const today = getLocalDateString();
 		handleDateChange(today);
 		fetchTrainers();
 		socketService.connect();
@@ -83,6 +85,8 @@ function BookingPage() {
 				const dayWithPTStatus = await Promise.all(
 					dayList.map(async (day) => {
 						const av = await api.get(`/trainer-availability?trainerId=${selectedTrainerId}&trainingDateId=${day._id}`);
+						// Global day status has higher priority than trainer-specific status.
+						if (day.status === "Inactive") return { ...day, status: "Inactive" };
 						return { ...day, status: av.data?.dayStatus === "Unavailable" ? "Inactive" : "Active" };
 					}),
 				);
@@ -308,7 +312,7 @@ function BookingPage() {
 	const slotStatusLabels = {
 		Active: "Hoạt động",
 		Inactive: "Ngưng hoạt động",
-		Booked: "Đã đặt",
+		Booked: "Đã được đặt",
 		Completed: "Đã hoàn thành"
 	};
 	const slotStatusColors = {
@@ -355,7 +359,7 @@ function BookingPage() {
 						value={selectedTrainerId}
 						onChange={(e) => setSelectedTrainerId(e.target.value)}
 						style={{ width: "260px" }}>
-						<option value="">-- Lịch chung (không chọn PT) --</option>
+						<option value="">-- Lịch chung --</option>
 						{trainers.map((pt) => (
 							<option key={pt._id} value={pt._id}>
 								{pt.fullName}

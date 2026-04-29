@@ -1,5 +1,6 @@
 const TrainerDayStatus = require('../models/TrainerDayStatus');
 const TrainerSlotStatus = require('../models/TrainerSlotStatus');
+const TrainingDate = require('../models/TrainingDate');
 
 exports.getByDay = async (req, res, next) => {
   try {
@@ -10,9 +11,15 @@ exports.getByDay = async (req, res, next) => {
 
     const dayStatus = await TrainerDayStatus.findOne({ trainerId, trainingDateId });
     const slotStatuses = await TrainerSlotStatus.find({ trainerId, trainingDateId });
+    const trainingDay = await TrainingDate.findById(trainingDateId).select('status');
+
+    const effectiveDayStatus =
+      trainingDay && trainingDay.status === 'Inactive'
+        ? 'Unavailable'
+        : (dayStatus?.status || 'Available');
 
     res.json({
-      dayStatus: dayStatus?.status || 'Available',
+      dayStatus: effectiveDayStatus,
       slotStatuses
     });
   } catch (error) {
@@ -25,6 +32,11 @@ exports.toggleDay = async (req, res, next) => {
     const { trainerId, trainingDateId } = req.body;
     if (!trainerId || !trainingDateId) {
       return res.status(400).json({ error: 'trainerId và trainingDateId là bắt buộc' });
+    }
+
+    const trainingDay = await TrainingDate.findById(trainingDateId).select('status');
+    if (trainingDay && trainingDay.status === 'Inactive') {
+      return res.status(400).json({ error: 'Ngày chung đang tắt. Không thể bật ngày riêng cho PT.' });
     }
 
     const existing = await TrainerDayStatus.findOne({ trainerId, trainingDateId });

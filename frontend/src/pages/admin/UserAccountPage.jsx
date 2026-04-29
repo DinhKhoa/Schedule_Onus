@@ -8,6 +8,7 @@ import DataTable from '../../components/DataTable';
 import { AddIcon } from '../../components/Icons';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 function UserAccountPage() {
   const [users, setUsers] = useState([]);
@@ -185,7 +186,7 @@ function UserAccountPage() {
             </div>
             <div className="form-group">
               <label>Ngày sinh</label>
-              <input className="input" type="date" value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return d.toISOString().slice(0, 10); })()} />
+              <input className="input" type="date" value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return getLocalDateString(d); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return getLocalDateString(d); })()} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

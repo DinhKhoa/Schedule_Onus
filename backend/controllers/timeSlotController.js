@@ -70,7 +70,7 @@ exports.getAll = async (req, res, next) => {
 					? await Booking.find({
 							trainingDateId,
 							enrollmentId: { $in: relevantEnrollmentIds },
-							status: { $ne: "Cancelled" },
+							status: { $in: ["PendingTrainerConfirm", "Booked", "Completed"] },
 						}).populate("enrollmentId", "memberId trainerId")
 					: [];
 
@@ -192,7 +192,7 @@ exports.remove = async (req, res, next) => {
 
 		const activeBooking = await Booking.findOne({
 			timeSlotId: slot._id,
-			status: "Booked",
+			status: { $in: ["Booked", "PendingTrainerConfirm"] },
 		});
 		if (activeBooking) {
 			return res

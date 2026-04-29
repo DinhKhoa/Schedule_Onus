@@ -72,7 +72,7 @@ exports.bookSession = async (data, io) => {
     // 3b. NEW: Check if member has enough remaining sessions after accounting for pending bookings
     const pendingBookingsCount = await Booking.countDocuments({
       enrollmentId: enrollment._id,
-      status: 'Booked'
+      status: { $in: ['PendingTrainerConfirm', 'Booked'] }
     }).session(session);
 
     if (enrollment.remainingSessions <= pendingBookingsCount) {
@@ -80,16 +80,17 @@ exports.bookSession = async (data, io) => {
     }
 
     // 4. Check Member busy
-    const memberBooking = await Booking.findOne({
+    const memberEnrollments = await Enrollment.find({ memberId: memberObjectId }).session(session);
+    const memberEnrollmentIds = memberEnrollments.map(e => e._id);
+    
+    const memberBusy = await Booking.findOne({
       trainingDateId,
       timeSlotId,
-      status: 'Booked'
-    }).populate({
-      path: 'enrollmentId',
-      match: { memberId }
+      status: { $in: ['PendingTrainerConfirm', 'Booked'] },
+      enrollmentId: { $in: memberEnrollmentIds }
     }).session(session);
-
-    if (memberBooking && memberBooking.enrollmentId) {
+    
+    if (memberBusy) {
       throw { status: 400, message: 'Bạn đã có một lịch tập khác vào khung giờ này' };
     }
 
@@ -104,16 +105,17 @@ exports.bookSession = async (data, io) => {
       throw { status: 400, message: 'PT không làm việc trong khung giờ này.' };
     }
 
-    const ptBooking = await Booking.findOne({
+    const trainerEnrollments = await Enrollment.find({ trainerId }).session(session);
+    const trainerEnrollmentIds = trainerEnrollments.map(e => e._id);
+
+    const ptBusy = await Booking.findOne({
       trainingDateId,
       timeSlotId,
-      status: 'Booked'
-    }).populate({
-      path: 'enrollmentId',
-      match: { trainerId }
+      status: { $in: ['PendingTrainerConfirm', 'Booked'] },
+      enrollmentId: { $in: trainerEnrollmentIds }
     }).session(session);
 
-    if (ptBooking && ptBooking.enrollmentId) {
+    if (ptBusy) {
       throw { status: 400, message: 'PT của bạn đã có lịch dạy vào khung giờ này' };
     }
 
@@ -121,7 +123,7 @@ exports.bookSession = async (data, io) => {
     const booking = await Booking.create([{
       timeSlotId, trainingDateId,
       enrollmentId: enrollment._id,
-      status: 'Booked'
+      status: 'PendingTrainerConfirm'
     }], { session });
 
     // 7. Deduct session immediately -> REMOVED: Now deduct only on completion or late cancel
@@ -130,7 +132,7 @@ exports.bookSession = async (data, io) => {
 
     await session.commitTransaction();
 
-    if (io) io.emit('slotUpdated', { timeSlotId, trainingDateId, status: 'Booked' });
+    if (io) io.emit('slotUpdated', { timeSlotId, trainingDateId, status: 'PendingTrainerConfirm' });
 
     return booking[0];
   } catch (error) {
@@ -144,7 +146,7 @@ exports.bookSession = async (data, io) => {
 /**
  * Cancel a session
  */
-exports.cancelSession = async (bookingId, io) => {
+exports.cancelSession = async (bookingId, io, userId, role) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -152,10 +154,19 @@ exports.cancelSession = async (bookingId, io) => {
     const booking = await Booking.findById(bookingId)
       .populate('timeSlotId')
       .populate('trainingDateId')
+      .populate('enrollmentId')
       .session(session);
 
-    if (!booking || booking.status !== 'Booked') {
+    if (!booking || !['PendingTrainerConfirm', 'Booked'].includes(booking.status)) {
       throw { status: 400, message: 'Lịch tập không hợp lệ hoặc đã xử lý' };
+    }
+
+    // Security Check: Only Admin or the owner (Member) can cancel
+    if (role !== 'ADMIN') {
+      const isOwner = booking.enrollmentId && booking.enrollmentId.memberId.toString() === userId.toString();
+      if (!isOwner) {
+        throw { status: 403, message: 'Bạn không có quyền hủy lịch tập này.' };
+      }
     }
 
     // Check 2-hour rule (Keep the rule from original code)
@@ -207,10 +218,21 @@ exports.completeSession = async (bookingId, io, trainerIdFromToken) => {
   session.startTransaction();
 
   try {
-    const booking = await Booking.findById(bookingId).session(session);
+    const booking = await Booking.findById(bookingId)
+      .populate('timeSlotId')
+      .populate('trainingDateId')
+      .session(session);
 
     if (!booking || booking.status !== 'Booked') {
       throw { status: 400, message: 'Lịch tập không hợp lệ. Chỉ có thể xác nhận buổi học đang ở trạng thái "Đã đặt".' };
+    }
+
+    // PT can only mark session as completed after scheduled end time.
+    const sessionEnd = new Date(booking.trainingDateId.date);
+    const [endHour, endMinute] = booking.timeSlotId.endTime.split(':');
+    sessionEnd.setHours(parseInt(endHour, 10), parseInt(endMinute, 10), 0, 0);
+    if (new Date() < sessionEnd) {
+      throw { status: 400, message: 'Chưa đến giờ kết thúc buổi tập. Bạn chỉ có thể xác nhận hoàn thành sau khi buổi tập kết thúc.' };
     }
 
     const owningEnrollment = await Enrollment.findById(booking.enrollmentId).session(session);
@@ -241,6 +263,59 @@ exports.completeSession = async (bookingId, io, trainerIdFromToken) => {
     }
 
     return { message: 'Hoàn thành buổi tập thành công' };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+exports.acceptSession = async (bookingId, io, trainerIdFromToken) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const booking = await Booking.findById(bookingId).session(session);
+    if (!booking || booking.status !== 'PendingTrainerConfirm') {
+      throw { status: 400, message: 'Lịch tập không hợp lệ để nhận.' };
+    }
+    const enrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    if (!enrollment || enrollment.trainerId.toString() !== trainerIdFromToken.toString()) {
+      throw { status: 403, message: 'Bạn chỉ có thể nhận lịch của chính mình.' };
+    }
+    booking.status = 'Booked';
+    await booking.save({ session });
+    await session.commitTransaction();
+    if (io) io.emit('sessionUpdated', { id: bookingId, status: 'Booked' });
+    return { message: 'Đã nhận lịch tập.' };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+exports.rejectSession = async (bookingId, io, trainerIdFromToken) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const booking = await Booking.findById(bookingId).session(session);
+    if (!booking || booking.status !== 'PendingTrainerConfirm') {
+      throw { status: 400, message: 'Lịch tập không hợp lệ để từ chối.' };
+    }
+    const enrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    if (!enrollment || enrollment.trainerId.toString() !== trainerIdFromToken.toString()) {
+      throw { status: 403, message: 'Bạn chỉ có thể từ chối lịch của chính mình.' };
+    }
+    booking.status = 'Rejected';
+    await booking.save({ session });
+    await session.commitTransaction();
+    if (io) {
+      io.emit('slotUpdated', { timeSlotId: booking.timeSlotId, trainingDateId: booking.trainingDateId, status: 'Active' });
+      io.emit('sessionUpdated', { id: bookingId, status: 'Rejected' });
+    }
+    return { message: 'Đã từ chối lịch tập.' };
   } catch (error) {
     await session.abortTransaction();
     throw error;

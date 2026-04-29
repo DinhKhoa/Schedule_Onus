@@ -5,6 +5,11 @@ import { socketService } from '../../services/socketService';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
 
+import calendarIcon from '../../icon/calendar.png';
+import clockIcon from '../../icon/clock.png';
+import userIcon from '../../icon/user.png';
+import locationIcon from '../../icon/location.png';
+
 function SchedulePage() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -70,17 +75,25 @@ function SchedulePage() {
     }
   };
 
-  const upcoming = bookings.filter(b => b.status === 'Booked');
-  const history = bookings.filter(b => b.status !== 'Booked');
+  const upcoming = bookings.filter(b => b.status === 'Booked' || b.status === 'PendingTrainerConfirm');
+  const history = bookings.filter(b => b.status !== 'Booked' && b.status !== 'PendingTrainerConfirm');
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
 
   const renderCard = (booking, isUpcoming) => {
-    const statusLabels = { Booked: 'Đang chờ', Completed: 'Hoàn thành', Cancelled: 'Đã hủy' };
+    const statusLabels = {
+      PendingTrainerConfirm: 'Chờ PT xác nhận',
+      Booked: 'Đã nhận lịch',
+      Completed: 'Hoàn thành',
+      Cancelled: 'Đã hủy',
+      Rejected: 'PT từ chối'
+    };
     const badgeColors = {
+      PendingTrainerConfirm: { bg: '#DBEAFE', color: '#1D4ED8' },
       Booked: { bg: '#FEF3C7', color: '#D97706' },
       Completed: { bg: '#D1FAE5', color: '#16a34a' },
-      Cancelled: { bg: '#FEE2E2', color: '#DC2626' }
+      Cancelled: { bg: '#FEE2E2', color: '#DC2626' },
+      Rejected: { bg: '#FECACA', color: '#B91C1C' }
     };
     const badgeStyle = badgeColors[booking.status] || badgeColors.Completed;
 
@@ -101,20 +114,20 @@ function SchedulePage() {
         </div>
         <div className="ui-card-body">
           <div className="ui-info">
-            <span className="icon">📅</span> 
+            <img src={calendarIcon} alt="" className="ui-icon-img" /> 
             {booking.trainingDateId?.date ? (() => { 
               const d = new Date(booking.trainingDateId.date); 
               return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; 
             })() : '—'}
           </div>
           <div className="ui-info">
-            <span className="icon">🕒</span> {booking.timeSlotId?.startTime} - {booking.timeSlotId?.endTime}
+            <img src={clockIcon} alt="" className="ui-icon-img" /> {booking.timeSlotId?.startTime} - {booking.timeSlotId?.endTime}
           </div>
           <div className="ui-info">
-            <span className="icon">👤</span> HLV: {booking.enrollmentId?.trainerId?.fullName || '—'}
+            <img src={userIcon} alt="" className="ui-icon-img" /> HLV: {booking.enrollmentId?.trainerId?.fullName || '—'}
           </div>
           <div className="ui-info">
-            <span className="icon">📍</span> ONUS
+            <img src={locationIcon} alt="" className="ui-icon-img" /> ONUS
           </div>
         </div>
       </div>
@@ -184,9 +197,9 @@ function SchedulePage() {
         .ui-title { font-size: 16px; font-weight: 700; color: #111827; }
         .ui-cancel-btn { background: white; border: 1px solid #E5E7EB; color: #EF4444; padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .ui-cancel-btn:hover { background: #FEF2F2; border-color: #FECACA; }
-        .ui-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+        .ui-card-body { display: grid; grid-template-columns: auto auto; gap: 12px 60px; justify-content: start; }
         .ui-info { display: flex; align-items: center; gap: 8px; color: #6B7280; font-size: 14px; }
-        .ui-info .icon { font-size: 16px; opacity: 0.7; }
+        .ui-icon-img { width: 18px; height: 18px; object-fit: contain; filter: brightness(0) saturate(100%) invert(48%) sepia(13%) saturate(545%) hue-rotate(182deg) brightness(91%) contrast(85%); }
       `}</style>
     </div>
   );

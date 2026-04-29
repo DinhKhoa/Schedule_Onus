@@ -81,7 +81,7 @@ exports.create = async (req, res, next) => {
 // PUT /api/booking/:id/cancel — Cancel a booking
 exports.cancel = async (req, res, next) => {
   try {
-    const result = await bookingService.cancelSession(req.params.id, req.app.get('io'));
+    const result = await bookingService.cancelSession(req.params.id, req.app.get('io'), req.user.id, req.user.role);
     res.json(result);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
@@ -93,6 +93,26 @@ exports.cancel = async (req, res, next) => {
 exports.complete = async (req, res, next) => {
   try {
     const result = await bookingService.completeSession(req.params.id, req.app.get('io'), req.user.id);
+    res.json(result);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+};
+
+exports.accept = async (req, res, next) => {
+  try {
+    const result = await bookingService.acceptSession(req.params.id, req.app.get('io'), req.user.id);
+    res.json(result);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+};
+
+exports.reject = async (req, res, next) => {
+  try {
+    const result = await bookingService.rejectSession(req.params.id, req.app.get('io'), req.user.id);
     res.json(result);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });

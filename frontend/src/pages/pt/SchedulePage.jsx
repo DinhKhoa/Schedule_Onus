@@ -5,6 +5,9 @@ import api from '../../services/api';
 import { socketService } from '../../services/socketService';
 import ErrorModal from '../../components/ErrorModal';
 import clockIcon from '../../icon/clock.png';
+import userIcon from '../../icon/user.png';
+
+import { getLocalDateString } from '../../utils/dateUtils';
 
 function SchedulePage() {
   const { user } = useAuth();
@@ -31,8 +34,8 @@ function SchedulePage() {
       setDays(availableDays);
       setBookings(bookingsRes.data);
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const todayDay = availableDays.find(d => new Date(d.date).toISOString().slice(0, 10) === todayStr);
+      const todayStr = getLocalDateString();
+      const todayDay = availableDays.find(d => getLocalDateString(new Date(d.date)) === todayStr);
       setSelectedDay(todayDay || { date: new Date().toISOString() });
     } catch (err) {
       console.error('Lỗi tải dữ liệu:', err);
@@ -77,6 +80,24 @@ function SchedulePage() {
     } finally {
       setConfirmOpen(false);
       setConfirmSlot(null);
+    }
+  };
+
+  const handleAccept = async (bookingId) => {
+    try {
+      await api.put(`/booking/${bookingId}/accept`);
+      fetchBookings();
+    } catch (error) {
+      setError({ show: true, message: error.response?.data?.error || 'Lỗi nhận lịch' });
+    }
+  };
+
+  const handleReject = async (bookingId) => {
+    try {
+      await api.put(`/booking/${bookingId}/reject`);
+      fetchBookings();
+    } catch (error) {
+      setError({ show: true, message: error.response?.data?.error || 'Lỗi từ chối lịch' });
     }
   };
 
@@ -170,6 +191,13 @@ function SchedulePage() {
               const memberName = booking.enrollmentId?.memberId?.fullName || '—';
               const packageName = booking.enrollmentId?.packageId?.name || '—';
               const isCompleted = booking.status === 'Completed';
+              const isPending = booking.status === 'PendingTrainerConfirm';
+              const isBooked = booking.status === 'Booked';
+              const isRejected = booking.status === 'Rejected';
+              const sessionEnd = new Date(booking.trainingDateId?.date);
+              const [endH, endM] = (booking.timeSlotId?.endTime || '00:00').split(':');
+              sessionEnd.setHours(parseInt(endH, 10), parseInt(endM, 10), 0, 0);
+              const canCompleteNow = new Date() >= sessionEnd;
 
               return (
                 <div key={booking._id} className="pt-slot-card">
@@ -178,17 +206,17 @@ function SchedulePage() {
                   </div>
 
                   <div className="ui-info">
-                    <span className="icon">🕒</span>
+                    <img src={clockIcon} alt="" className="ui-icon-img" />
                     <span style={{ fontWeight: 500 }}>{booking.timeSlotId?.startTime} - {booking.timeSlotId?.endTime}</span>
                   </div>
                   <div className="ui-info" style={{ marginBottom: 16 }}>
-                    <span className="icon">👤</span>
+                    <img src={userIcon} alt="" className="ui-icon-img" />
                     <span style={{ color: '#4B5563' }}>{packageName}</span>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: isCompleted ? '#16A34A' : '#D97706' }}>
-                      {isCompleted ? 'Hoàn thành' : 'Đang chờ'}
+                      {isCompleted ? 'Hoàn thành' : isPending ? 'Chờ nhận lịch' : isBooked ? 'Đã nhận lịch' : isRejected ? 'Đã từ chối' : booking.status}
                     </span>
 
                     {isCompleted ? (
@@ -197,17 +225,27 @@ function SchedulePage() {
                            <polyline points="20 6 9 17 4 12"></polyline>
                          </svg>
                        </div>
-                    ) : (
+                    ) : isPending ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn-hoanthanh" onClick={() => handleAccept(booking._id)}>Nhận lịch</button>
+                        <button className="btn-hoanthanh" style={{ background: '#FEE2E2', color: '#DC2626' }} onClick={() => handleReject(booking._id)}>Từ chối</button>
+                      </div>
+                    ) : isBooked ? (
                       <button
                         className="btn-hoanthanh"
+                        disabled={!canCompleteNow}
+                        title={!canCompleteNow ? 'Chỉ xác nhận sau giờ kết thúc buổi tập' : 'Xác nhận hoàn thành buổi tập'}
+                        style={!canCompleteNow ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                         onClick={() => {
+                           if (!canCompleteNow) return;
                            setConfirmSlot(booking);
                            setConfirmOpen(true);
                         }}
                       >
-                        Hoàn thành
+                        Xác nhận hoàn thành
                       </button>
-                    )}
+                    ) : null
+                    }
                   </div>
                 </div>
               );
@@ -291,7 +329,7 @@ function SchedulePage() {
         .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
         .pt-slot-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px 20px; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
         .ui-info { display: flex; align-items: center; gap: 10px; color: #6B7280; font-size: 14px; margin-bottom: 8px; }
-        .ui-info .icon { font-size: 16px; opacity: 0.8; width: 20px; text-align: center; }
+        .ui-icon-img { width: 16px; height: 16px; object-fit: contain; filter: brightness(0) saturate(100%) invert(48%) sepia(13%) saturate(545%) hue-rotate(182deg) brightness(91%) contrast(85%); }
         .btn-hoanthanh { background: #DCFCE7; color: #16A34A; border: none; padding: 6px 16px; border-radius: 100px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-hoanthanh:hover { background: #BBF7D0; }
       `}</style>

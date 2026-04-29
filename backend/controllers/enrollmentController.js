@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Enrollment = require('../models/Enrollment');
 const CoursePackage = require('../models/CoursePackage');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
 
 // GET /api/enrollment
 exports.getAll = async (req, res, next) => {
@@ -89,7 +90,15 @@ exports.create = async (req, res, next) => {
 // DELETE /api/enrollment/:id
 exports.remove = async (req, res, next) => {
   try {
-    const enrollment = await Enrollment.findByIdAndDelete(req.params.id);
+    const enrollmentId = req.params.id;
+    
+    // Check if there are any bookings linked to this enrollment
+    const hasBookings = await Booking.findOne({ enrollmentId });
+    if (hasBookings) {
+      return res.status(400).json({ error: 'Không thể xóa gói tập đã có lịch sử tập luyện hoặc đang có lịch đặt. Vui lòng kiểm tra lại.' });
+    }
+
+    const enrollment = await Enrollment.findByIdAndDelete(enrollmentId);
     if (!enrollment) return res.status(404).json({ error: 'Không tìm thấy đăng ký' });
     res.json({ message: 'Xóa đăng ký thành công' });
   } catch (error) {

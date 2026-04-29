@@ -6,6 +6,7 @@ import SuccessModal from '../../components/SuccessModal';
 import ErrorModal from '../../components/ErrorModal';
 import DataTable from '../../components/DataTable';
 import { AddIcon } from '../../components/Icons';
+import { getLocalDateString, formatDateVN } from '../../utils/dateUtils';
 
 function EnrollmentPage() {
   const [enrollments, setEnrollments] = useState([]);
@@ -39,7 +40,7 @@ function EnrollmentPage() {
   };
 
   const openAdd = () => {
-    setForm({ memberId: '', packageId: '', trainerId: '', registrationDate: new Date().toISOString().slice(0, 10) });
+    setForm({ memberId: '', packageId: '', trainerId: '', registrationDate: getLocalDateString() });
     setModal(true);
   };
 
@@ -63,14 +64,7 @@ function EnrollmentPage() {
     } catch (err) { setError({ show: true, message: 'Không thể xóa lượt đăng ký này' }); }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const formatDate = (dateStr) => formatDateVN(dateStr);
 
   const filtered = enrollments.filter(e => {
     const q = search.toLowerCase();
@@ -129,7 +123,7 @@ function EnrollmentPage() {
           </div>
           <div className="form-group">
             <label>Ngày đăng ký</label>
-            <input className="input" type="date" value={form.registrationDate} onChange={e => setForm({ ...form, registrationDate: e.target.value })} required max={new Date().toISOString().slice(0, 10)} />
+            <input className="input" type="date" value={form.registrationDate} onChange={e => setForm({ ...form, registrationDate: e.target.value })} required max={getLocalDateString()} />
           </div>
           <div className="form-group">
             <label>PT phụ trách</label>
