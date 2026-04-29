@@ -6,8 +6,8 @@
       "destination": "/backend/server.js"
     },
     {
-      "source": "/((?!api|static|.*\\..*).*)",
-      "destination": "/frontend/index.html"
+      "source": "/((?!api|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }
