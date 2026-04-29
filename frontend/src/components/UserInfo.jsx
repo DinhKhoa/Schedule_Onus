@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import logoutIcon from '../icon/logout.png';
-import adminAvatar from '../icon/quantrivien.png';
-import maleAvatar from '../icon/nam.png';
-import femaleAvatar from '../icon/nu.png';
+import maleAvatar from '../icon/male.png';
+import femaleAvatar from '../icon/female.png';
+import adminAvatar from '../icon/admin.png';
 
 function UserInfo() {
   const { user, logout } = useAuth();
@@ -18,13 +17,13 @@ function UserInfo() {
 
   const roleLabels = {
     ADMIN: 'Quản trị viên',
-    PT: 'Huấn luyện viên',
-    HOIVIEN: 'Hội viên'
+    TRAINER: 'Huấn luyện viên',
+    MEMBER: 'Hội viên'
   };
 
   const getAvatar = () => {
-    if (user?.vaiTro === 'ADMIN') return adminAvatar;
-    if (user?.gioiTinh === 'Nữ') return femaleAvatar;
+    if (user?.role === 'ADMIN') return adminAvatar;
+    if (user?.gender === 'Female') return femaleAvatar;
     return maleAvatar;
   };
 
@@ -32,47 +31,42 @@ function UserInfo() {
     <div className="user-info">
       <div className="user-info-details">
         <img src={getAvatar()} alt="avatar" className="user-avatar-img" />
-        <div>
-          <div className="user-name">{user?.hoTen || user?.taiKhoan || 'User'}</div>
-          <div className="user-role">{roleLabels[user?.vaiTro] || ''}</div>
+        <div className="user-text-meta">
+          <div className="user-name">{user?.fullName || 'Người dùng'}</div>
+          <div className="user-role">{roleLabels[user?.role] || ''}</div>
         </div>
       </div>
       <button className="logout-btn" onClick={() => setShowLogoutModal(true)} title="Đăng xuất">
-        <img src={logoutIcon} alt="logout" style={{ width: 20, height: 20 }} />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
       </button>
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 12, width: 460, maxWidth: '90%', padding: '24px 32px 32px', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-            <button 
-               style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9CA3AF' }}
-               onClick={() => setShowLogoutModal(false)}
-            >
-              ✕
-            </button>
-            
-            <div style={{ background: '#F8FAFC', borderRadius: 8, padding: '24px', marginTop: 24, marginBottom: 24 }}>
-               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px 0', color: '#334155' }}>
-                 Xác nhận:
-               </h3>
-               <div style={{ fontSize: 15, color: '#64748B', fontStyle: 'italic' }}>
-                 Bạn có chắc chắn muốn đăng xuất không?
-               </div>
-            </div>
+          <div className="modal-content" style={{ background: 'white', borderRadius: 16, width: 400, maxWidth: '90%', padding: 32, position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px 0', color: '#111827', textAlign: 'center' }}>
+              Đăng xuất
+            </h3>
+            <p style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 32 }}>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?
+            </p>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
                <button 
-                 style={{ background: '#F1F5F9', border: 'none', color: '#0F172A', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                 style={{ flex: 1, background: '#F3F4F6', border: 'none', color: '#374151', padding: '12px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
                  onClick={() => setShowLogoutModal(false)}
                >
-                 Quay lại
+                 Hủy
                </button>
                <button 
-                 style={{ background: '#2563EB', border: 'none', color: 'white', padding: '10px 24px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                 style={{ flex: 1, background: '#EF4444', border: 'none', color: 'white', padding: '12px', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
                  onClick={confirmLogout}
                >
-                 Xác nhận
+                 Đăng xuất
                </button>
             </div>
           </div>
@@ -80,43 +74,14 @@ function UserInfo() {
       )}
 
       <style>{`
-        .user-info {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 16px 20px;
-          border-top: 1px solid var(--color-border);
-        }
-        .user-info-details {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .user-avatar-img {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          object-fit: cover;
-        }
-        .user-name {
-          font-size: 14px;
-          font-weight: 600;
-        }
-        .user-role {
-          font-size: 12px;
-          color: var(--color-text-light);
-        }
-        .logout-btn {
-          background: none;
-          border: none;
-          font-size: 20px;
-          cursor: pointer;
-          padding: 4px;
-          color: var(--color-danger);
-        }
-        .logout-btn:hover {
-          opacity: 0.8;
-        }
+        .user-info { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-top: 1px solid #F3F4F6; margin-top: auto; }
+        .user-info-details { display: flex; align-items: center; gap: 12px; }
+        .user-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #F3F4F6; }
+        .user-text-meta { display: flex; flex-direction: column; }
+        .user-name { font-size: 14px; font-weight: 700; color: #111827; }
+        .user-role { font-size: 12px; color: #6B7280; font-weight: 500; }
+        .logout-btn { background: none; border: none; cursor: pointer; color: #EF4444; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .logout-btn:hover { background: #FEF2F2; transform: scale(1.05); }
       `}</style>
     </div>
   );

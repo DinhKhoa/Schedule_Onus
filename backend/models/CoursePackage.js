@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
-const khoaTapSchema = new mongoose.Schema({
-  tenKhoaTap: {
+const coursePackageSchema = new mongoose.Schema({
+  name: {
     type: String,
     required: [true, 'Tên khóa tập là bắt buộc'],
     unique: true,
     trim: true
   },
-  soBuoi: {
+  totalSessions: {
     type: Number,
     required: true,
     min: [1, 'Số buổi phải ít nhất 1'],
@@ -17,4 +17,4 @@ const khoaTapSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('KhoaTap', khoaTapSchema, 'KhoaTap');
+module.exports = mongoose.model('CoursePackage', coursePackageSchema, 'CoursePackages');

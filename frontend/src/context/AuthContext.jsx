@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -8,35 +9,31 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      try {
-        // Decode JWT payload
-        // Use decodeURIComponent to properly handle UTF-8 Vietnamese characters
-        const parts = token.split('.');
-        if (parts.length !== 3) throw new Error('Invalid token structure');
+    const initAuth = async () => {
+      if (token) {
+        try {
+          // 1. Giải mã tạm thời để hiện UI nhanh
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUser({
+            id: payload.id,
+            fullName: payload.fullName,
+            role: payload.role,
+            gender: payload.gender
+          });
 
-        const base64 = parts[1];
-        const payload = JSON.parse(
-          decodeURIComponent(
-            atob(base64)
-              .split('')
-              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          )
-        );
-        setUser({
-          id: payload.id,
-          hoTen: payload.hoTen,
-          vaiTro: payload.vaiTro,
-          taiKhoan: payload.taiKhoan,
-          gioiTinh: payload.gioiTinh
-        });
-      } catch (err) {
-        console.error('Auth Context Token Error:', err);
-        logout();
+          // 2. Lấy dữ liệu "tươi" nhất từ Database
+          const { data } = await api.get('/users/profile');
+          setUser(data);
+        } catch (err) {
+          console.error('Auth Init Error:', err);
+          // Nếu token hết hạn hoặc lỗi, logout
+          if (err.response?.status === 401) logout();
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    
+    initAuth();
   }, [token]);
 
   const login = (newToken, userData) => {
@@ -49,6 +46,12 @@ export function AuthProvider({ children }) {
     setUser(prev => ({ ...prev, ...userData }));
   };
 
+  const updateAuth = (newToken, userData) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser(userData);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -56,7 +59,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser, updateAuth }}>
       {children}
     </AuthContext.Provider>
   );

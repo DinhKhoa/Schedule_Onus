@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
 
-const quanTriVienSchema = new mongoose.Schema({
-  taiKhoan: {
+const adminSchema = new mongoose.Schema({
+  username: {
     type: String,
     required: true,
     unique: true,
     trim: true
   },
-  matKhau: {
+  password: {
     type: String,
     required: true
   },
-  hoTen: {
+  fullName: {
     type: String,
     required: true,
     trim: true
@@ -20,4 +20,4 @@ const quanTriVienSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('QuanTriVien', quanTriVienSchema, 'QuanTriVien');
+module.exports = mongoose.model('Admin', adminSchema, 'Admins');

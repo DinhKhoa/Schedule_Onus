@@ -2,20 +2,20 @@ const router = require('express').Router();
 
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
-const khoaTapRoutes = require('./khoaTapRoutes');
-const dangKyKhoaTapRoutes = require('./dangKyKhoaTapRoutes');
-const ngayTapRoutes = require('./ngayTapRoutes');
-const gioTapRoutes = require('./gioTapRoutes');
-const lichTapRoutes = require('./lichTapRoutes');
-const ngayGioTapRoutes = require('./ngayGioTapRoutes');
+const coursePackageRoutes = require('./coursePackageRoutes');
+const enrollmentRoutes = require('./enrollmentRoutes');
+const trainingDateRoutes = require('./trainingDateRoutes');
+const timeSlotRoutes = require('./timeSlotRoutes');
+const bookingRoutes = require('./bookingRoutes');
+const slotStatusRoutes = require('./slotStatusRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/khoa-tap', khoaTapRoutes);
-router.use('/dang-ky-khoa-tap', dangKyKhoaTapRoutes);
-router.use('/ngay-tap', ngayTapRoutes);
-router.use('/gio-tap', gioTapRoutes);
-router.use('/lich-tap', lichTapRoutes);
-router.use('/ngay-gio-tap', ngayGioTapRoutes);
+router.use('/course-package', coursePackageRoutes);
+router.use('/enrollment', enrollmentRoutes);
+router.use('/training-date', trainingDateRoutes);
+router.use('/time-slot', timeSlotRoutes);
+router.use('/booking', bookingRoutes);
+router.use('/slot-status', slotStatusRoutes);
 
 module.exports = router;

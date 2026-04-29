@@ -1,30 +1,30 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  hoTen: {
+  fullName: {
     type: String,
     required: true,
     trim: true,
     minlength: [2, 'Họ tên phải có ít nhất 2 ký tự'],
     maxlength: [50, 'Họ tên không được quá 50 ký tự']
   },
-  soDienThoai: {
+  phoneNumber: {
     type: String,
     required: [true, 'Số điện thoại là bắt buộc'],
     unique: true,
     trim: true,
     match: [/^[0-9]{10}$/, 'Số điện thoại phải có đúng 10 chữ số']
   },
-  matKhau: {
+  password: {
     type: String,
     required: true
   },
-  gioiTinh: {
+  gender: {
     type: String,
-    enum: ['Nam', 'Nữ'],
+    enum: ['Male', 'Female'],
     required: true
   },
-  ngaySinh: {
+  dateOfBirth: {
     type: Date,
     required: true,
     validate: {
@@ -38,21 +38,21 @@ const userSchema = new mongoose.Schema({
       message: 'Người dùng phải từ 18 tuổi trở lên'
     }
   },
-  vaiTro: {
+  role: {
     type: String,
-    enum: ['HOIVIEN', 'PT'],
+    enum: ['MEMBER', 'TRAINER'],
     required: true,
-    default: 'HOIVIEN'
+    default: 'MEMBER'
   },
-  trangThai: {
+  status: {
     type: String,
-    enum: ['HoatDong', 'NgungHoatDong'],
-    default: 'HoatDong'
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
   }
 }, {
   timestamps: true
 });
 
-userSchema.index({ vaiTro: 1 });
+userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema, 'Users');

@@ -1,9 +1,9 @@
 import api from './api';
 
 export const authService = {
-  login: (soDienThoai, matKhau) =>
-    api.post('/auth/login', { soDienThoai, matKhau }),
+  login: (phoneNumber, password) =>
+    api.post('/auth/login', { phoneNumber, password }),
 
-  changePassword: (matKhauCu, matKhauMoi) =>
-    api.post('/auth/change-password', { matKhauCu, matKhauMoi })
+  changePassword: (oldPassword, newPassword) =>
+    api.put('/auth/change-password', { oldPassword, newPassword })
 };

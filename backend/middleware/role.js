@@ -4,7 +4,7 @@ const role = (...allowedRoles) => {
       return res.status(401).json({ error: 'Chưa xác thực' });
     }
 
-    if (!allowedRoles.includes(req.user.vaiTro)) {
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Không có quyền truy cập' });
     }
 

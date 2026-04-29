@@ -1,26 +1,19 @@
-const NgayTap = require('../models/NgayTap');
+const TrainingDate = require('../models/TrainingDate');
 
 /**
- * Tự động tạo NgayTap cho tuần tiếp theo nếu chưa tồn tại.
- * Logic:
- * - Tính ngày thứ 2 của tuần tiếp theo
- * - Tạo 7 ngày (Thứ 2 → Chủ Nhật) của tuần đó nếu chưa có
- * 
- * Gọi hàm này ở mỗi request thay vì dùng cron job.
+ * Tự động tạo TrainingDate cho tuần tiếp theo nếu chưa tồn tại.
  */
 exports.ensureNextWeekExists = async () => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Tính ngày thứ 2 của tuần sau
-    const dayOfWeek = today.getDay(); // 0=CN, 1=T2, ..., 6=T7
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
     const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     
     const nextMonday = new Date(today);
     nextMonday.setDate(today.getDate() + daysUntilNextMonday);
 
-    // Tạo 7 ngày của tuần sau (T2 - CN)
     const daysToEnsure = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(nextMonday);
@@ -28,21 +21,20 @@ exports.ensureNextWeekExists = async () => {
       daysToEnsure.push(date);
     }
 
-    // Dùng upsert để tránh duplicate
     const ops = daysToEnsure.map(date => ({
       updateOne: {
         filter: {
-          ngay: {
+          date: {
             $gte: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0),
             $lte: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59)
           }
         },
-        update: { $setOnInsert: { ngay: date, trangThai: 'HoatDong' } },
+        update: { $setOnInsert: { date, status: 'Active' } },
         upsert: true
       }
     }));
 
-    await NgayTap.bulkWrite(ops);
+    await TrainingDate.bulkWrite(ops);
   } catch (err) {
     console.error('[WeeklySchedule] Error ensuring next week:', err.message);
   }
@@ -55,7 +47,7 @@ exports.getNextWeekRange = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const dayOfWeek = today.getDay(); // 0=CN, 1=T2
+  const dayOfWeek = today.getDay();
   const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
 
   const nextMonday = new Date(today);

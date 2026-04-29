@@ -1,5 +1,17 @@
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+
+// GET /api/users/profile
+exports.getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
 
 // GET /api/users
 exports.getAll = async (req, res, next) => {
@@ -8,11 +20,11 @@ exports.getAll = async (req, res, next) => {
     const filter = {};
     if (search) {
       filter.$or = [
-        { hoTen: { $regex: search, $options: 'i' } },
-        { soDienThoai: { $regex: search, $options: 'i' } }
+        { fullName: { $regex: search, $options: 'i' } },
+        { phoneNumber: { $regex: search, $options: 'i' } }
       ];
     }
-    const users = await User.find(filter).select('-matKhau').sort({ createdAt: -1 });
+    const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
     next(error);
@@ -22,7 +34,7 @@ exports.getAll = async (req, res, next) => {
 // GET /api/users/:id
 exports.getById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select('-matKhau');
+    const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     res.json(user);
   } catch (error) {
@@ -33,52 +45,51 @@ exports.getById = async (req, res, next) => {
 // POST /api/users
 exports.create = async (req, res, next) => {
   try {
-    const { hoTen, soDienThoai, matKhau, gioiTinh, ngaySinh, vaiTro, trangThai } = req.body;
+    const { fullName, phoneNumber, password, gender, dateOfBirth, role, status } = req.body;
 
     // Validate phone number: exactly 10 digits
-    if (!soDienThoai || !/^[0-9]{10}$/.test(soDienThoai)) {
+    if (!phoneNumber || !/^[0-9]{10}$/.test(phoneNumber)) {
       return res.status(400).json({ error: 'Số điện thoại phải có đúng 10 chữ số' });
     }
 
     // Check duplicate phone
-    const existing = await User.findOne({ soDienThoai });
+    const existing = await User.findOne({ phoneNumber });
     if (existing) {
       return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
     }
 
     // Validate required fields
-    if (!hoTen || !hoTen.trim()) {
+    if (!fullName || !fullName.trim()) {
       return res.status(400).json({ error: 'Họ tên là bắt buộc' });
     }
-    if (!gioiTinh || !['Nam', 'Nữ'].includes(gioiTinh)) {
+    if (!gender || !['Male', 'Female'].includes(gender)) {
       return res.status(400).json({ error: 'Giới tính phải là Nam hoặc Nữ' });
     }
-    if (!ngaySinh) {
+    if (!dateOfBirth) {
       return res.status(400).json({ error: 'Ngày sinh là bắt buộc' });
     }
-    if (!vaiTro || !['HOIVIEN', 'PT'].includes(vaiTro)) {
+    if (!role || !['MEMBER', 'TRAINER'].includes(role)) {
       return res.status(400).json({ error: 'Vai trò phải là HOIVIEN hoặc PT' });
     }
 
-    const password = matKhau || soDienThoai; // default pw = phone number
-    if (password.length < 6) {
+    const pass = password || phoneNumber; // default pw = phone number
+    if (pass.length < 6) {
       return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(pass, 10);
     const user = await User.create({
-      hoTen: hoTen.trim(),
-      soDienThoai,
-      matKhau: hashedPassword,
-      gioiTinh,
-      ngaySinh,
-      vaiTro,
-      trangThai: trangThai || 'HoatDong'
+      fullName: fullName.trim(),
+      phoneNumber,
+      password: hashedPassword,
+      gender,
+      dateOfBirth,
+      role,
+      status: status || 'Active'
     });
-    const { matKhau: _, ...userObj } = user.toObject();
+    const { password: _, ...userObj } = user.toObject();
     res.status(201).json(userObj);
   } catch (error) {
-    // Handle Mongoose duplicate key error
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
     }
@@ -91,34 +102,30 @@ exports.update = async (req, res, next) => {
   try {
     const updates = { ...req.body };
 
-    // Validate phone if being updated
-    if (updates.soDienThoai) {
-      if (!/^[0-9]{10}$/.test(updates.soDienThoai)) {
+    if (updates.phoneNumber) {
+      if (!/^[0-9]{10}$/.test(updates.phoneNumber)) {
         return res.status(400).json({ error: 'Số điện thoại phải có đúng 10 chữ số' });
       }
-      // Check duplicate (exclude current user)
-      const existing = await User.findOne({ soDienThoai: updates.soDienThoai, _id: { $ne: req.params.id } });
+      const existing = await User.findOne({ phoneNumber: updates.phoneNumber, _id: { $ne: req.params.id } });
       if (existing) {
         return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
       }
     }
 
-    // Validate trangThai if being updated
-    if (updates.trangThai && !['HoatDong', 'NgungHoatDong'].includes(updates.trangThai)) {
+    if (updates.status && !['Active', 'Inactive'].includes(updates.status)) {
       return res.status(400).json({ error: 'Trạng thái không hợp lệ' });
     }
 
-    // Handle password update
-    if (updates.matKhau) {
-      if (updates.matKhau.length < 6) {
+    if (updates.password) {
+      if (updates.password.length < 6) {
         return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
       }
-      updates.matKhau = await bcrypt.hash(updates.matKhau, 10);
+      updates.password = await bcrypt.hash(updates.password, 10);
     } else {
-      delete updates.matKhau;
+      delete updates.password;
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).select('-matKhau');
+    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).select('-password');
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     res.json(user);
   } catch (error) {
@@ -133,27 +140,35 @@ exports.update = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { hoTen, soDienThoai, gioiTinh, ngaySinh } = req.body;
+    const { fullName, phoneNumber, gender, dateOfBirth } = req.body;
     
     const updates = {};
-    if (hoTen) updates.hoTen = hoTen.trim();
-    if (gioiTinh) updates.gioiTinh = gioiTinh;
-    if (ngaySinh) updates.ngaySinh = ngaySinh;
+    if (fullName) updates.fullName = fullName.trim();
+    if (gender) updates.gender = gender;
+    if (dateOfBirth) updates.dateOfBirth = dateOfBirth;
     
-    if (soDienThoai) {
-      if (!/^[0-9]{10}$/.test(soDienThoai)) {
+    if (phoneNumber) {
+      if (!/^[0-9]{10}$/.test(phoneNumber)) {
         return res.status(400).json({ error: 'Số điện thoại phải có đúng 10 chữ số' });
       }
-      const existing = await User.findOne({ soDienThoai, _id: { $ne: userId } });
+      const existing = await User.findOne({ phoneNumber, _id: { $ne: userId } });
       if (existing) {
         return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
       }
-      updates.soDienThoai = soDienThoai;
+      updates.phoneNumber = phoneNumber;
     }
 
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true }).select('-matKhau');
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true }).select('-password');
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
-    res.json(user);
+
+    // Cấp Token mới chứa thông tin mới cập nhật
+    const token = jwt.sign(
+      { id: user._id, role: user.role, fullName: user.fullName, gender: user.gender },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({ user, token });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });

@@ -16,10 +16,10 @@ import PTSessionDetail from './pages/pt/SessionDetailPage';
 import PTSessionStatus from './pages/pt/SessionStatusPage';
 import PTProfile from './pages/pt/ProfilePage';
 // Admin pages
-import AdminKhoaTap from './pages/admin/KhoaTapPage';
-import AdminTaiKhoan from './pages/admin/TaiKhoanPage';
-import AdminDangKyKhoa from './pages/admin/DangKyKhoaPage';
-import AdminLichTap from './pages/admin/LichTapPage';
+import AdminCoursePackage from './pages/admin/CoursePackagePage';
+import AdminUserAccount from './pages/admin/UserAccountPage';
+import AdminEnrollment from './pages/admin/EnrollmentPage';
+import AdminBooking from './pages/admin/BookingPage';
 
 function App() {
   return (
@@ -29,7 +29,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
 
           {/* Member routes */}
-          <Route path="/member" element={<ProtectedRoute allowedRoles={['HOIVIEN']} />}>
+          <Route path="/member" element={<ProtectedRoute allowedRoles={['MEMBER']} />}>
             <Route index element={<MemberBooking />} />
             <Route path="schedule" element={<MemberSchedule />} />
             <Route path="profile" element={<MemberProfile />} />
@@ -37,7 +37,7 @@ function App() {
           </Route>
 
           {/* PT routes */}
-          <Route path="/pt" element={<ProtectedRoute allowedRoles={['PT']} />}>
+          <Route path="/pt" element={<ProtectedRoute allowedRoles={['TRAINER']} />}>
             <Route index element={<PTSchedule />} />
             <Route path="session/:id" element={<PTSessionDetail />} />
             <Route path="session/:id/status" element={<PTSessionStatus />} />
@@ -46,11 +46,11 @@ function App() {
 
           {/* Admin routes */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route index element={<Navigate to="khoa-tap" replace />} />
-            <Route path="khoa-tap" element={<AdminKhoaTap />} />
-            <Route path="tai-khoan" element={<AdminTaiKhoan />} />
-            <Route path="dang-ky-khoa" element={<AdminDangKyKhoa />} />
-            <Route path="lich-tap" element={<AdminLichTap />} />
+            <Route index element={<Navigate to="course-package" replace />} />
+            <Route path="course-package" element={<AdminCoursePackage />} />
+            <Route path="user-account" element={<AdminUserAccount />} />
+            <Route path="enrollment" element={<AdminEnrollment />} />
+            <Route path="booking" element={<AdminBooking />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

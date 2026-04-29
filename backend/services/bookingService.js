@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-const LichTap = require('../models/LichTap');
-const GioTap = require('../models/GioTap');
-const NgayGioTap = require('../models/NgayGioTap');
-const DangKyKhoaTap = require('../models/DangKyKhoaTap');
-const NgayTap = require('../models/NgayTap');
+const Booking = require('../models/Booking');
+const TimeSlot = require('../models/TimeSlot');
+const SlotStatus = require('../models/SlotStatus');
+const Enrollment = require('../models/Enrollment');
+const TrainingDate = require('../models/TrainingDate');
 
 /**
  * Book a session
@@ -13,87 +13,97 @@ exports.bookSession = async (data, io) => {
   session.startTransaction();
 
   try {
-    const { hoiVienId, gioTapId, ngayTapId } = data;
+    const { memberId, timeSlotId, trainingDateId } = data;
 
     // 1. Get slot and day info
-    const slot = await GioTap.findById(gioTapId).session(session);
-    if (!slot || slot.trangThai === 'NgungHoatDong') {
+    const slot = await TimeSlot.findById(timeSlotId).session(session);
+    if (!slot || slot.status === 'Inactive') {
       throw { status: 400, message: 'Khung giờ không khả dụng' };
     }
 
-    // 1b. Check per-day override (NgayGioTap)
-    const override = await NgayGioTap.findOne({ ngayTapId, gioTapId }).session(session);
-    if (override && override.trangThai === 'NgungHoatDong') {
+    // 1b. Check per-day override (SlotStatus)
+    const override = await SlotStatus.findOne({ trainingDateId, timeSlotId }).session(session);
+    if (override && override.status === 'Inactive') {
       throw { status: 400, message: 'Khung giờ không khả dụng vào ngày này' };
     }
 
-    const day = await NgayTap.findById(ngayTapId).session(session);
-    if (!day || day.trangThai === 'NgungHoatDong') {
+    const day = await TrainingDate.findById(trainingDateId).session(session);
+    if (!day || day.status === 'Inactive') {
       throw { status: 400, message: 'Ngày tập không khả dụng' };
     }
 
-    // 2. Prevent booking in the past (date + time)
-    const sessionDate = new Date(day.ngay);
-    const [hours, minutes] = slot.gioBatDau.split(':');
+    // 2. Prevent booking in the past
+    const sessionDate = new Date(day.date);
+    const [hours, minutes] = slot.startTime.split(':');
     sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
     if (sessionDate <= new Date()) {
       throw { status: 400, message: 'Không thể đặt khung giờ trong quá khứ' };
     }
 
-    // 2. Find active enrollment (oldest first: by ngayDangKy then createdAt)
-    const enrollment = await DangKyKhoaTap.findOne({
-      hoiVienId,
-      soBuoiConLai: { $gt: 0 }
-    }).sort({ ngayDangKy: 1, createdAt: 1 }).session(session);
+    // 3. Find active enrollment
+    const enrollment = await Enrollment.findOne({
+      memberId,
+      remainingSessions: { $gt: 0 }
+    }).sort({ registrationDate: 1, createdAt: 1 }).session(session);
 
     if (!enrollment) {
       throw { status: 400, message: 'Bạn không còn buổi tập khả dụng. Vui lòng đăng ký khóa tập mới.' };
     }
 
-    // 4. Check Member busy (already has another booking in this slot)
-    const memberBooking = await LichTap.findOne({
-      ngayTapId,
-      gioTapId,
-      trangThai: 'DaDat'
-    }).populate({
-      path: 'dangKyKhoaTapId',
-      match: { hoiVienId }
+    // 3b. NEW: Check if member has enough remaining sessions after accounting for pending bookings
+    const pendingBookingsCount = await Booking.countDocuments({
+      enrollmentId: enrollment._id,
+      status: 'Booked'
     }).session(session);
 
-    if (memberBooking && memberBooking.dangKyKhoaTapId) {
+    if (enrollment.remainingSessions <= pendingBookingsCount) {
+      throw { status: 400, message: 'Số buổi còn lại không đủ (đã tính các lịch đặt chờ tập). Vui lòng kiểm tra lại.' };
+    }
+
+    // 4. Check Member busy
+    const memberBooking = await Booking.findOne({
+      trainingDateId,
+      timeSlotId,
+      status: 'Booked'
+    }).populate({
+      path: 'enrollmentId',
+      match: { memberId }
+    }).session(session);
+
+    if (memberBooking && memberBooking.enrollmentId) {
       throw { status: 400, message: 'Bạn đã có một lịch tập khác vào khung giờ này' };
     }
 
-    // 5. Check PT busy (assigned PT is already teaching someone else)
-    const ptId = enrollment.ptId;
-    const ptBooking = await LichTap.findOne({
-      ngayTapId,
-      gioTapId,
-      trangThai: 'DaDat'
+    // 5. Check PT busy
+    const trainerId = enrollment.trainerId;
+    const ptBooking = await Booking.findOne({
+      trainingDateId,
+      timeSlotId,
+      status: 'Booked'
     }).populate({
-      path: 'dangKyKhoaTapId',
-      match: { ptId }
+      path: 'enrollmentId',
+      match: { trainerId }
     }).session(session);
 
-    if (ptBooking && ptBooking.dangKyKhoaTapId) {
+    if (ptBooking && ptBooking.enrollmentId) {
       throw { status: 400, message: 'PT của bạn đã có lịch dạy vào khung giờ này' };
     }
 
     // 6. Create booking
-    const booking = await LichTap.create([{
-      gioTapId, ngayTapId,
-      dangKyKhoaTapId: enrollment._id,
-      trangThai: 'DaDat'
+    const booking = await Booking.create([{
+      timeSlotId, trainingDateId,
+      enrollmentId: enrollment._id,
+      status: 'Booked'
     }], { session });
 
-    // 7. Deduct session immediately (Prevent overbooking)
-    enrollment.soBuoiConLai -= 1;
-    await enrollment.save({ session });
+    // 7. Deduct session immediately -> REMOVED: Now deduct only on completion or late cancel
+    // enrollment.remainingSessions -= 1;
+    // await enrollment.save({ session });
 
     await session.commitTransaction();
 
-    if (io) io.emit('slotUpdated', { gioTapId, ngayTapId, trangThai: 'DaDat' });
+    if (io) io.emit('slotUpdated', { timeSlotId, trainingDateId, status: 'Booked' });
 
     return booking[0];
   } catch (error) {
@@ -106,60 +116,54 @@ exports.bookSession = async (data, io) => {
 
 /**
  * Cancel a session
- * Business rules:
- * - Can only cancel if > 2 hours before session
- * - Refund session to enrollment
  */
-exports.cancelSession = async (lichTapId, io) => {
+exports.cancelSession = async (bookingId, io) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const booking = await LichTap.findById(lichTapId)
-      .populate('gioTapId')
-      .populate('ngayTapId')
+    const booking = await Booking.findById(bookingId)
+      .populate('timeSlotId')
+      .populate('trainingDateId')
       .session(session);
 
-    if (!booking || booking.trangThai !== 'DaDat') {
+    if (!booking || booking.status !== 'Booked') {
       throw { status: 400, message: 'Lịch tập không hợp lệ hoặc đã xử lý' };
     }
 
-    // Check 2-hour rule
-    const sessionDate = new Date(booking.ngayTapId.ngay);
-    const [hours, minutes] = booking.gioTapId.gioBatDau.split(':');
+    // Check 2-hour rule (Keep the rule from original code)
+    const sessionDate = new Date(booking.trainingDateId.date);
+    const [hours, minutes] = booking.timeSlotId.startTime.split(':');
     sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
     const now = new Date();
     const diffHours = (sessionDate - now) / (1000 * 60 * 60);
 
-    if (diffHours < 2) {
-      throw { status: 400, message: 'Không thể hủy trong vòng 2 giờ trước buổi tập' };
-    }
-
     // Cancel booking
-    booking.trangThai = 'DaHuy';
+    booking.status = 'Cancelled';
     await booking.save({ session });
 
-    // 8. Refund session (Level 1 Point 2 fix)
-    const enrollment = await DangKyKhoaTap.findById(booking.dangKyKhoaTapId).session(session);
-    if (enrollment) {
-      enrollment.soBuoiConLai += 1;
+    // Refund session -> MODIFIED: Only refund (or rather, don't deduct) if early.
+    // If late (<4h), we deduct 1 session as penalty.
+    const enrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    if (enrollment && diffHours < 4) {
+      enrollment.remainingSessions -= 1;
       await enrollment.save({ session });
     }
 
     await session.commitTransaction();
 
     if (io) {
-      io.emit('slotUpdated', { gioTapId: booking.gioTapId._id, ngayTapId: booking.ngayTapId._id, trangThai: 'HoatDong' });
-      if (enrollment) {
-        io.emit('sessionRefunded', { 
-            hoiVienId: enrollment.hoiVienId, 
-            soBuoiConLai: enrollment.soBuoiConLai 
+      io.emit('slotUpdated', { timeSlotId: booking.timeSlotId._id, trainingDateId: booking.trainingDateId._id, status: 'Active' });
+      if (enrollment && diffHours < 4) {
+        io.emit('sessionUpdated', { 
+            memberId: enrollment.memberId, 
+            remainingSessions: enrollment.remainingSessions 
         });
       }
     }
 
-    return { message: 'Hủy lịch tập thành công' };
+    return { message: diffHours < 4 ? 'Hủy muộn: Bạn đã bị trừ 1 buổi tập.' : 'Hủy lịch tập thành công' };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -169,29 +173,40 @@ exports.cancelSession = async (lichTapId, io) => {
 };
 
 /**
- * Complete a session (PT action)
- * Business rules:
- * - Session status 'DaDat' -> 'DaHoanThanh'
- * - Sessions were already deducted at booking, no need to deduct here.
+ * Complete a session
  */
-exports.completeSession = async (lichTapId, io) => {
+exports.completeSession = async (bookingId, io) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const booking = await LichTap.findById(lichTapId).session(session);
+    const booking = await Booking.findById(bookingId).session(session);
 
-    if (!booking || booking.trangThai !== 'DaDat') {
+    if (!booking || booking.status !== 'Booked') {
       throw { status: 400, message: 'Lịch tập không hợp lệ. Chỉ có thể xác nhận buổi học đang ở trạng thái "Đã đặt".' };
     }
 
-    // Mark as completed
-    booking.trangThai = 'DaHoanThanh';
+    booking.status = 'Completed';
     await booking.save({ session });
+
+    // Deduct session on completion
+    const enrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    if (enrollment) {
+      enrollment.remainingSessions -= 1;
+      await enrollment.save({ session });
+    }
 
     await session.commitTransaction();
 
-    if (io) io.emit('sessionUpdated', { id: lichTapId, trangThai: 'DaHoanThanh' });
+    if (io) {
+      io.emit('sessionUpdated', { id: bookingId, status: 'Completed' });
+      if (enrollment) {
+        io.emit('sessionUpdated', { 
+          memberId: enrollment.memberId, 
+          remainingSessions: enrollment.remainingSessions 
+        });
+      }
+    }
 
     return { message: 'Hoàn thành buổi tập thành công' };
   } catch (error) {

@@ -3,23 +3,25 @@ import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 import DataTable from '../../components/DataTable';
 import { AddIcon } from '../../components/Icons';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
 
-function TaiKhoanPage() {
+function UserAccountPage() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
-    hoTen: '', soDienThoai: '',
-    gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong'
+    fullName: '', phoneNumber: '',
+    gender: 'Male', dateOfBirth: '', role: 'MEMBER', status: 'Active'
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState({ show: false, message: '' });
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -33,53 +35,52 @@ function TaiKhoanPage() {
 
   const openAdd = () => {
     setEditId(null);
-    setForm({ hoTen: '', soDienThoai: '', gioiTinh: 'Nam', ngaySinh: '', vaiTro: 'HOIVIEN', trangThai: 'HoatDong' });
+    setForm({ fullName: '', phoneNumber: '', gender: 'Male', dateOfBirth: '', role: 'MEMBER', status: 'Active' });
     setModal(true);
   };
 
   const openEdit = (u) => {
     setEditId(u._id);
     setForm({
-      hoTen: u.hoTen, soDienThoai: u.soDienThoai,
-      gioiTinh: u.gioiTinh || 'Nam', ngaySinh: u.ngaySinh ? u.ngaySinh.slice(0, 10) : '',
-      vaiTro: u.vaiTro, trangThai: u.trangThai
+      fullName: u.fullName, phoneNumber: u.phoneNumber,
+      gender: u.gender || 'Male', dateOfBirth: u.dateOfBirth ? u.dateOfBirth.slice(0, 10) : '',
+      role: u.role, status: u.status
     });
     setModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.hoTen || form.hoTen.trim().length < 2) {
-      return alert('Họ tên phải có ít nhất 2 ký tự');
+     if (!form.fullName || form.fullName.trim().length < 2) {
+      return setError({ show: true, message: 'Họ tên phải có ít nhất 2 ký tự' });
     }
-    if (form.hoTen.trim().length > 50) {
-      return alert('Họ tên không được quá 50 ký tự');
+    if (form.fullName.trim().length > 50) {
+      return setError({ show: true, message: 'Họ tên không được quá 50 ký tự' });
     }
-    if (/\d/.test(form.hoTen)) {
-      return alert('Họ tên không được chứa chữ số');
+    if (/\d/.test(form.fullName)) {
+      return setError({ show: true, message: 'Họ tên không được chứa chữ số' });
     }
-    if (!/^[0-9]{10}$/.test(form.soDienThoai)) {
-      return alert('Số điện thoại phải có đúng 10 chữ số');
+    if (!/^[0-9]{10}$/.test(form.phoneNumber)) {
+      return setError({ show: true, message: 'Số điện thoại phải có đúng 10 chữ số' });
     }
-    if (!form.ngaySinh) {
-      return alert('Ngày sinh là bắt buộc');
+    if (!form.dateOfBirth) {
+      return setError({ show: true, message: 'Ngày sinh là bắt buộc' });
     }
-    const birthDate = new Date(form.ngaySinh);
+    const birthDate = new Date(form.dateOfBirth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     if (age < 18) {
-      return alert('Người dùng phải từ 18 tuổi trở lên');
+      return setError({ show: true, message: 'Người dùng phải từ 18 tuổi trở lên' });
     }
     if (age > 100) {
-      return alert('Ngày sinh không hợp lệ');
+      return setError({ show: true, message: 'Ngày sinh không hợp lệ' });
     }
     try {
       const payload = { ...form };
       if (!editId) {
-        // Mật khẩu mặc định là số điện thoại khi tạo mới
-        payload.matKhau = form.soDienThoai;
+        payload.password = form.phoneNumber;
       }
       if (editId) {
         await api.put(`/users/${editId}`, payload);
@@ -89,7 +90,7 @@ function TaiKhoanPage() {
       setModal(false);
       fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.error || 'Lỗi');
+      setError({ show: true, message: err.response?.data?.error || 'Lỗi hệ thống' });
     }
   };
 
@@ -99,7 +100,9 @@ function TaiKhoanPage() {
       setConfirmDeleteId(null);
       fetchUsers();
       setShowSuccess(true);
-    } catch (err) { alert('Không thể xóa'); }
+    } catch (err) { 
+      setError({ show: true, message: 'Không thể xóa tài khoản này' }); 
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -112,24 +115,24 @@ function TaiKhoanPage() {
   };
 
   const filtered = users.filter(u =>
-    u.hoTen?.toLowerCase().includes(search.toLowerCase()) ||
-    u.soDienThoai?.includes(search)
+    u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+    u.phoneNumber?.includes(search)
   );
 
   const columns = [
     { key: '_index', label: 'ID', render: (v, row, idx) => idx + 1 },
-    { key: 'hoTen', label: 'Tên' },
-    { key: 'gioiTinh', label: 'Giới tính' },
-    { key: 'ngaySinh', label: 'Ngày sinh', render: (v) => formatDate(v) },
-    { key: 'soDienThoai', label: 'SĐT' },
-    { key: 'vaiTro', label: 'Vai trò', render: (v) => (
-      <span className={`role-badge ${v === 'PT' ? 'role-pt' : 'role-member'}`}>
-        {v === 'PT' ? 'PT' : 'Hội viên'}
+    { key: 'fullName', label: 'Tên' },
+    { key: 'gender', label: 'Giới tính', render: (v) => v === 'Male' ? 'Nam' : 'Nữ' },
+    { key: 'dateOfBirth', label: 'Ngày sinh', render: (v) => formatDate(v) },
+    { key: 'phoneNumber', label: 'SĐT' },
+    { key: 'role', label: 'Vai trò', render: (v) => (
+      <span className={`role-badge ${v === 'TRAINER' ? 'role-pt' : 'role-member'}`}>
+        {v === 'TRAINER' ? 'PT' : 'Hội viên'}
       </span>
     )},
-    { key: 'trangThai', label: 'Trạng thái', render: (v) => (
-      <span className={`status-badge ${v === 'HoatDong' ? 'status-active' : 'status-inactive'}`}>
-        {v === 'HoatDong' ? 'Active' : 'Inactive'}
+    { key: 'status', label: 'Trạng thái', render: (v) => (
+      <span className={`status-badge ${v === 'Active' ? 'status-active' : 'status-inactive'}`}>
+        {v === 'Active' ? 'Active' : 'Inactive'}
       </span>
     )}
   ];
@@ -165,40 +168,40 @@ function TaiKhoanPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Họ và tên</label>
-            <input className="input" value={form.hoTen} onChange={e => setForm({ ...form, hoTen: e.target.value })} required minLength={2} maxLength={50} />
+            <input className="input" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required minLength={2} maxLength={50} />
           </div>
           <div className="form-group">
             <label>Số điện thoại</label>
-            <input className="input" value={form.soDienThoai} onChange={e => setForm({ ...form, soDienThoai: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} required maxLength={10} pattern="[0-9]{10}"/>
+            <input className="input" value={form.phoneNumber} onChange={e => setForm({ ...form, phoneNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })} required maxLength={10} pattern="[0-9]{10}"/>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label>Giới tính</label>
-              <select className="input" value={form.gioiTinh} onChange={e => setForm({ ...form, gioiTinh: e.target.value })}>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
+              <select className="input" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
+                <option value="Male">Nam</option>
+                <option value="Female">Nữ</option>
               </select>
             </div>
             <div className="form-group">
               <label>Ngày sinh</label>
-              <input className="input" type="date" value={form.ngaySinh} onChange={e => setForm({ ...form, ngaySinh: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return d.toISOString().slice(0, 10); })()} />
+              <input className="input" type="date" value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} required max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} min={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 100); return d.toISOString().slice(0, 10); })()} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label>Vai trò</label>
-              <select className="input" value={form.vaiTro} onChange={e => setForm({ ...form, vaiTro: e.target.value })}>
-                <option value="HOIVIEN">Hội viên</option>
-                <option value="PT">PT</option>
+              <select className="input" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
+                <option value="MEMBER">Hội viên</option>
+                <option value="TRAINER">PT</option>
               </select>
             </div>
             {editId ? (
               <div className="form-group">
                 <label>Trạng thái</label>
-                <select className="input" value={form.trangThai} onChange={e => setForm({ ...form, trangThai: e.target.value })}>
-                  <option value="HoatDong">Active</option>
-                  <option value="NgungHoatDong">Inactive</option>
+                <select className="input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
             ) : (
@@ -264,8 +267,14 @@ function TaiKhoanPage() {
         onClose={() => setShowSuccess(false)}
         message="Thành công"
       />
+
+      <ErrorModal
+        isOpen={error.show}
+        onClose={() => setError({ ...error, show: false })}
+        message={error.message}
+      />
     </div>
   );
 }
 
-export default TaiKhoanPage;
+export default UserAccountPage;

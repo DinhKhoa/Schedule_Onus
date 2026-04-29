@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { socketService } from '../../services/socketService';
+import ErrorModal from '../../components/ErrorModal';
 import clockIcon from '../../icon/clock.png';
 
 function SchedulePage() {
@@ -14,25 +15,25 @@ function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
 
-  // Modal states
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmSlot, setConfirmSlot] = useState(null);
+  const [error, setError] = useState({ show: false, message: '' });
 
   const fetchInitialData = async () => {
     try {
       const [daysRes, bookingsRes] = await Promise.all([
-        api.get('/ngay-tap'),
-        api.get(`/lich-tap?ptId=${user.id}`)
+        api.get('/training-date'),
+        api.get(`/booking?trainerId=${user.id}`)
       ]);
 
-      const availableDays = daysRes.data.sort((a, b) => new Date(a.ngay) - new Date(b.ngay));
+      const availableDays = daysRes.data.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       setDays(availableDays);
       setBookings(bookingsRes.data);
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const todayDay = availableDays.find(d => new Date(d.ngay).toISOString().slice(0, 10) === todayStr);
-      setSelectedDay(todayDay || { ngay: new Date().toISOString() });
+      const todayDay = availableDays.find(d => new Date(d.date).toISOString().slice(0, 10) === todayStr);
+      setSelectedDay(todayDay || { date: new Date().toISOString() });
     } catch (err) {
       console.error('Lỗi tải dữ liệu:', err);
     } finally {
@@ -42,7 +43,7 @@ function SchedulePage() {
 
   const fetchBookings = async () => {
     try {
-      const { data } = await api.get(`/lich-tap?ptId=${user.id}`);
+      const { data } = await api.get(`/booking?trainerId=${user.id}`);
       setBookings(data);
     } catch (err) {
       console.error(err);
@@ -67,10 +68,10 @@ function SchedulePage() {
   const handleCompleteConfirm = async () => {
     if (!confirmSlot) return;
     try {
-      await api.put(`/lich-tap/${confirmSlot._id}/complete`);
+      await api.put(`/booking/${confirmSlot._id}/complete`);
       fetchBookings();
     } catch (error) {
-      alert(error.response?.data?.error || 'Lỗi cập nhật');
+      setError({ show: true, message: error.response?.data?.error || 'Lỗi cập nhật' });
     } finally {
       setConfirmOpen(false);
       setConfirmSlot(null);
@@ -78,9 +79,9 @@ function SchedulePage() {
   };
 
   const currentDayBookings = bookings.filter(b => {
-    if (selectedDay?._id) return b.ngayTapId?._id === selectedDay._id;
-    if (b.ngayTapId?.ngay && selectedDay?.ngay) {
-      return new Date(b.ngayTapId.ngay).toDateString() === new Date(selectedDay.ngay).toDateString();
+    if (selectedDay?._id) return b.trainingDateId?._id === selectedDay._id;
+    if (b.trainingDateId?.date && selectedDay?.date) {
+      return new Date(b.trainingDateId.date).toDateString() === new Date(selectedDay.date).toDateString();
     }
     return false;
   });
@@ -104,7 +105,6 @@ function SchedulePage() {
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* Calendar Card */}
       <div className="card" style={{ padding: 32, borderRadius: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: '#111827' }}>
           Lịch dạy cá nhân
@@ -125,13 +125,13 @@ function SchedulePage() {
             {currentWeekDates.map((date) => {
               const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
               const dbDay = days.find(d => {
-                const dbD = new Date(d.ngay);
+                const dbD = new Date(d.date);
                 return `${dbD.getFullYear()}-${String(dbD.getMonth() + 1).padStart(2, '0')}-${String(dbD.getDate()).padStart(2, '0')}` === dateStr;
-              }) || { ngay: dateStr };
+              }) || { date: dateStr };
               
               const isSelected = selectedDay?._id 
                                  ? selectedDay._id === dbDay._id 
-                                 : new Date(selectedDay?.ngay).toDateString() === date.toDateString();
+                                 : new Date(selectedDay?.date).toDateString() === date.toDateString();
                                  
               const isPast = date < todayHelper;
 
@@ -154,7 +154,7 @@ function SchedulePage() {
         {selectedDay && (
           <div style={{ marginTop: 24, marginBottom: 20, fontSize: 15, fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
             <img src={clockIcon} alt="" style={{ width: 22, height: 22, filter: "brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%)" }} />
-            Lịch dạy cá nhân: <span style={{ color: '#111827' }}>{(() => { const d = new Date(selectedDay.ngay); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}</span>
+            Lịch dạy cá nhân: <span style={{ color: '#111827' }}>{(() => { const d = new Date(selectedDay.date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}</span>
           </div>
         )}
 
@@ -165,23 +165,23 @@ function SchedulePage() {
             </div>
           ) : (
             currentDayBookings.map(booking => {
-              const hvTen = booking.dangKyKhoaTapId?.hoiVienId?.hoTen || '—';
-              const khoatap = booking.dangKyKhoaTapId?.khoaTapId?.tenKhoaTap || '—';
-              const isCompleted = booking.trangThai === 'DaHoanThanh';
+              const memberName = booking.enrollmentId?.memberId?.fullName || '—';
+              const packageName = booking.enrollmentId?.packageId?.name || '—';
+              const isCompleted = booking.status === 'Completed';
 
               return (
                 <div key={booking._id} className="pt-slot-card">
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 12 }}>
-                    Hội viên: <span style={{ fontWeight: 500, marginLeft: 8 }}>{hvTen}</span>
+                    Hội viên: <span style={{ fontWeight: 500, marginLeft: 8 }}>{memberName}</span>
                   </div>
 
                   <div className="ui-info">
                     <span className="icon">🕒</span>
-                    <span style={{ fontWeight: 500 }}>{booking.gioTapId?.gioBatDau} - {booking.gioTapId?.gioKetThuc}</span>
+                    <span style={{ fontWeight: 500 }}>{booking.timeSlotId?.startTime} - {booking.timeSlotId?.endTime}</span>
                   </div>
                   <div className="ui-info" style={{ marginBottom: 16 }}>
                     <span className="icon">👤</span>
-                    <span style={{ color: '#4B5563' }}>{khoatap}</span>
+                    <span style={{ color: '#4B5563' }}>{packageName}</span>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>
@@ -214,7 +214,6 @@ function SchedulePage() {
         </div>
       </div>
 
-      {/* Modal Xác Nhận */}
       {confirmOpen && confirmSlot && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="modal-content" style={{ background: 'white', borderRadius: 16, width: 440, maxWidth: '90%', padding: 32, position: 'relative' }}>
@@ -241,11 +240,11 @@ function SchedulePage() {
             </div>
 
             <div style={{ background: '#F9FAFB', borderRadius: 8, padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: 32, fontSize: 14 }}>
-               <div style={{ color: '#4B5563' }}>Hội viên: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.dangKyKhoaTapId?.hoiVienId?.hoTen}</span></div>
-               <div style={{ color: '#4B5563' }}>Khoá tập: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.dangKyKhoaTapId?.khoaTapId?.tenKhoaTap}</span></div>
-               <div style={{ color: '#4B5563' }}>Thời gian: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.gioTapId?.gioBatDau} - {confirmSlot.gioTapId?.gioKetThuc}</span></div>
+               <div style={{ color: '#4B5563' }}>Hội viên: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.enrollmentId?.memberId?.fullName}</span></div>
+               <div style={{ color: '#4B5563' }}>Khoá tập: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.enrollmentId?.packageId?.name}</span></div>
+               <div style={{ color: '#4B5563' }}>Thời gian: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>{confirmSlot.timeSlotId?.startTime} - {confirmSlot.timeSlotId?.endTime}</span></div>
                <div style={{ color: '#4B5563' }}>Ngày: <span style={{ color: '#111827', marginLeft: 8, fontWeight: 500 }}>
-                 {(() => { const d = new Date(confirmSlot.ngayTapId?.ngay); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`})()}
+                 {(() => { const d = new Date(confirmSlot.trainingDateId?.date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`})()}
                </span></div>
             </div>
 
@@ -267,134 +266,32 @@ function SchedulePage() {
         </div>
       )}
 
+      <ErrorModal 
+        isOpen={error.show} 
+        onClose={() => setError({ ...error, show: false })} 
+        message={error.message} 
+      />
       <style>{`
-        .calendar-container {
-          border: 1px solid #E5E7EB;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-        .calendar-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px 24px;
-          border-bottom: 1px solid #E5E7EB;
-          background: #FAFAFA;
-        }
-        .calendar-month {
-          font-size: 16px;
-          font-weight: 700;
-          color: #111827;
-        }
-        .calendar-nav {
-          display: flex;
-          gap: 12px;
-        }
-        .nav-btn {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          border: none;
-          background: none;
-          font-size: 16px;
-          font-weight: 600;
-          color: #6B7280;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .nav-btn:hover {
-          background: #F3F4F6;
-          color: #111827;
-        }
-        .calendar-days-row {
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          background: white;
-        }
-        .cal-day-cell {
-          padding: 16px 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          border-right: 1px solid #E5E7EB;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .cal-day-cell:last-child {
-          border-right: none;
-        }
-        .cal-day-cell.selected {
-          background: #EFF6FF;
-        }
-        .cal-weekday {
-          font-size: 13px;
-          font-weight: 500;
-          color: #6B7280;
-        }
-        .cal-date-circle {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 15px;
-          font-weight: 700;
-          color: #111827;
-        }
-        .cal-date-circle.selected {
-          background: #2563EB;
-          color: white;
-          box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-        }
-        .cal-day-cell.past { 
-          opacity: 0.6; 
-          background: #f9fafb;
-        }
-        
-        .slots-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 16px;
-        }
-        .pt-slot-card {
-          border: 1px solid #E5E7EB;
-          border-radius: 12px;
-          padding: 16px 20px;
-          background: white;
-          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        .ui-info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: #6B7280;
-          font-size: 14px;
-          margin-bottom: 8px;
-        }
-        .ui-info .icon {
-          font-size: 16px;
-          opacity: 0.8;
-          width: 20px;
-          text-align: center;
-        }
-        .btn-hoanthanh {
-          background: #DCFCE7;
-          color: #16A34A;
-          border: none;
-          padding: 6px 16px;
-          border-radius: 100px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .btn-hoanthanh:hover {
-          background: #BBF7D0;
-        }
+        .calendar-container { border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #E5E7EB; background: #FAFAFA; }
+        .calendar-month { font-size: 16px; font-weight: 700; color: #111827; }
+        .calendar-nav { display: flex; gap: 12px; }
+        .nav-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: none; font-size: 16px; font-weight: 600; color: #6B7280; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:hover { background: #F3F4F6; color: #111827; }
+        .calendar-days-row { display: grid; grid-template-columns: repeat(7, 1fr); background: white; }
+        .cal-day-cell { padding: 16px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid #E5E7EB; cursor: pointer; transition: all 0.2s; }
+        .cal-day-cell:last-child { border-right: none; }
+        .cal-day-cell.selected { background: #EFF6FF; }
+        .cal-weekday { font-size: 13px; font-weight: 500; color: #6B7280; }
+        .cal-date-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #111827; }
+        .cal-date-circle.selected { background: #2563EB; color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); }
+        .cal-day-cell.past { opacity: 0.6; background: #f9fafb; }
+        .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .pt-slot-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px 20px; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .ui-info { display: flex; align-items: center; gap: 10px; color: #6B7280; font-size: 14px; margin-bottom: 8px; }
+        .ui-info .icon { font-size: 16px; opacity: 0.8; width: 20px; text-align: center; }
+        .btn-hoanthanh { background: #DCFCE7; color: #16A34A; border: none; padding: 6px 16px; border-radius: 100px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-hoanthanh:hover { background: #BBF7D0; }
       `}</style>
     </div>
   );

@@ -1,35 +1,35 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UserInfo from './UserInfo';
 import thunderIcon from '../icon/thunder.png';
-import khoatapIcon from '../icon/khoatap.png';
-import dangkykhoatapIcon from '../icon/dangkykhoatap.png';
-import taikhoanIcon from '../icon/taikhoan.png';
-import lichIcon from '../icon/lich.png';
+import packageIcon from '../icon/package.png';
+import enrollmentIcon from '../icon/enrollment.png';
+import accountIcon from '../icon/account.png';
+import calendarIcon from '../icon/calendar.png';
 import menuIcon from '../icon/menu.png';
 import userIcon from '../icon/user.png';
 
 const menuConfig = {
   ADMIN: [
-    { path: '/admin/khoa-tap', label: 'Quản lý khóa tập', iconImg: khoatapIcon },
-    { path: '/admin/dang-ky-khoa', label: 'Quản lý đăng ký khoá', iconImg: dangkykhoatapIcon },
-    { path: '/admin/tai-khoan', label: 'Quản lý tài khoản', iconImg: taikhoanIcon },
-    { path: '/admin/lich-tap', label: 'Quản lý lịch', iconImg: lichIcon }
+    { path: '/admin/course-package', label: 'Quản lý khóa tập', iconImg: packageIcon },
+    { path: '/admin/enrollment', label: 'Quản lý đăng ký khoá', iconImg: enrollmentIcon },
+    { path: '/admin/user-account', label: 'Quản lý tài khoản', iconImg: accountIcon },
+    { path: '/admin/booking', label: 'Quản lý lịch', iconImg: calendarIcon }
   ],
-  PT: [
+  TRAINER: [
     { path: '/pt', label: 'Lịch dạy', iconImg: menuIcon },
     { path: '/pt/profile', label: 'Hồ sơ', iconImg: userIcon }
   ],
-  HOIVIEN: [
+  MEMBER: [
     { path: '/member', label: 'Trang chủ', iconImg: menuIcon },
-    { path: '/member/schedule', label: 'Lịch tập', iconImg: lichIcon },
+    { path: '/member/schedule', label: 'Lịch tập', iconImg: calendarIcon },
     { path: '/member/profile', label: 'Hồ sơ', iconImg: userIcon }
   ]
 };
 
 function Sidebar() {
   const { user } = useAuth();
-  const items = menuConfig[user?.vaiTro] || [];
+  const items = menuConfig[user?.role] || [];
 
   return (
     <aside className="sidebar">
@@ -90,13 +90,8 @@ function Sidebar() {
           color: white;
           font-size: 18px;
         }
-        .logo-text {
-          color: var(--color-primary);
-        }
-        .sidebar-nav {
-          flex: 1;
-          padding: 12px 12px;
-        }
+        .logo-text { color: var(--color-primary); }
+        .sidebar-nav { flex: 1; padding: 12px 12px; }
         .sidebar-link {
           display: flex;
           align-items: center;
@@ -116,25 +111,11 @@ function Sidebar() {
           transition: all 0.2s;
           filter: brightness(0) saturate(100%) invert(32%) sepia(12%) saturate(776%) hue-rotate(176deg) brightness(95%) contrast(90%) drop-shadow(0.3px 0px 0px rgba(0,0,0,0.1));
         }
-        .sidebar-link:hover {
-          background: #eff6ff;
-          color: #2563eb;
-        }
-        .sidebar-link:hover .sidebar-icon-img {
-          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.3px 0px 0px #2563eb);
-        }
-        .sidebar-link.active {
-          background: #eff6ff;
-          color: #2563eb;
-        }
-        .sidebar-link.active .sidebar-icon-img {
-          filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.5px 0px 0px #2563eb);
-        }
-        .sidebar-icon {
-          font-size: 14px;
-          display: flex;
-          align-items: center;
-        }
+        .sidebar-link:hover { background: #eff6ff; color: #2563eb; }
+        .sidebar-link:hover .sidebar-icon-img { filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.3px 0px 0px #2563eb); }
+        .sidebar-link.active { background: #eff6ff; color: #2563eb; }
+        .sidebar-link.active .sidebar-icon-img { filter: brightness(0) saturate(100%) invert(33%) sepia(93%) saturate(1636%) hue-rotate(213deg) brightness(97%) contrast(93%) drop-shadow(0.5px 0px 0px #2563eb); }
+        .sidebar-icon { font-size: 14px; display: flex; align-items: center; }
       `}</style>
     </aside>
   );

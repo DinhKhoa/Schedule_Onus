@@ -10,7 +10,6 @@ function SchedulePage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal states
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelId, setCancelId] = useState(null);
   const [successOpen, setSuccessOpen] = useState(false);
@@ -30,7 +29,7 @@ function SchedulePage() {
 
   const fetchBookings = async () => {
     try {
-      const { data } = await api.get(`/lich-tap?hoiVienId=${user.id}`);
+      const { data } = await api.get(`/booking?memberId=${user.id}`);
       setBookings(data);
     } catch (err) {
       console.error(err);
@@ -52,19 +51,16 @@ function SchedulePage() {
     setConfirmOpen(false);
     setErrorMsg('');
 
-    // 1. Optimistic Update (Đổi trạng thái sang 'DaHuy' ngay lập tức)
     setBookings(prev => prev.map(b => 
-      b._id === cancelId ? { ...b, trangThai: 'DaHuy' } : b
+      b._id === cancelId ? { ...b, status: 'Cancelled' } : b
     ));
 
     try {
-      await api.put(`/lich-tap/${cancelId}/cancel`);
+      await api.put(`/booking/${cancelId}/cancel`);
       setSuccessMsg('Hủy lịch tập thành công!');
       setSuccessOpen(true);
-      // Fetch thực tế để đồng bộ lại
       fetchBookings();
     } catch (err) {
-      // Rollback nếu lỗi
       setBookings(originalBookings);
       setErrorMsg(err.response?.data?.error || 'Không thể hủy lịch tập');
     } finally {
@@ -72,28 +68,28 @@ function SchedulePage() {
     }
   };
 
-  const upcoming = bookings.filter(b => b.trangThai === 'DaDat');
-  const history = bookings.filter(b => b.trangThai !== 'DaDat');
+  const upcoming = bookings.filter(b => b.status === 'Booked');
+  const history = bookings.filter(b => b.status !== 'Booked');
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
 
   const renderCard = (booking, isUpcoming) => {
-    const statusLabels = { DaDat: 'Đang chờ', DaHoanThanh: 'Hoàn thành', DaHuy: 'Đã hủy' };
+    const statusLabels = { Booked: 'Đang chờ', Completed: 'Hoàn thành', Cancelled: 'Đã hủy' };
     const badgeColors = {
-      DaDat: { bg: '#FEF3C7', color: '#D97706' }, // Yellow/Orange
-      DaHoanThanh: { bg: '#D1FAE5', color: '#16a34a' }, // Green
-      DaHuy: { bg: '#FEE2E2', color: '#DC2626' } // Red
+      Booked: { bg: '#FEF3C7', color: '#D97706' },
+      Completed: { bg: '#D1FAE5', color: '#16a34a' },
+      Cancelled: { bg: '#FEE2E2', color: '#DC2626' }
     };
-    const badgeStyle = badgeColors[booking.trangThai] || badgeColors.DaHoanThanh;
+    const badgeStyle = badgeColors[booking.status] || badgeColors.Completed;
 
     return (
       <div key={booking._id} className="ui-card">
         <div className="ui-card-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span className="ui-badge" style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.color }}>
-              {statusLabels[booking.trangThai]}
+              {statusLabels[booking.status]}
             </span>
-            <span className="ui-title">{booking.dangKyKhoaTapId?.khoaTapId?.tenKhoaTap || '—'}</span>
+            <span className="ui-title">{booking.enrollmentId?.packageId?.name || '—'}</span>
           </div>
           {isUpcoming && (
             <button className="ui-cancel-btn" onClick={() => handleCancelClick(booking._id)}>
@@ -104,16 +100,16 @@ function SchedulePage() {
         <div className="ui-card-body">
           <div className="ui-info">
             <span className="icon">📅</span> 
-            {booking.ngayTapId?.ngay ? (() => { 
-              const d = new Date(booking.ngayTapId.ngay); 
+            {booking.trainingDateId?.date ? (() => { 
+              const d = new Date(booking.trainingDateId.date); 
               return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; 
             })() : '—'}
           </div>
           <div className="ui-info">
-            <span className="icon">🕒</span> {booking.gioTapId?.gioBatDau} - {booking.gioTapId?.gioKetThuc}
+            <span className="icon">🕒</span> {booking.timeSlotId?.startTime} - {booking.timeSlotId?.endTime}
           </div>
           <div className="ui-info">
-            <span className="icon">👤</span> HLV: {booking.dangKyKhoaTapId?.ptId?.hoTen || '—'}
+            <span className="icon">👤</span> HLV: {booking.enrollmentId?.trainerId?.fullName || '—'}
           </div>
           <div className="ui-info">
             <span className="icon">📍</span> ONUS
@@ -132,7 +128,6 @@ function SchedulePage() {
         </div>
       </div>
 
-      {/* Error message */}
       {errorMsg && (
         <div className="card" style={{ textAlign: 'center', padding: 16, color: '#DC2626', marginBottom: 16, background: '#FEF2F2', border: '1px solid #FECACA' }}>
           {errorMsg}
@@ -162,16 +157,14 @@ function SchedulePage() {
         )}
       </div>
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmOpen}
         onClose={() => { setConfirmOpen(false); setCancelId(null); }}
         onConfirm={handleCancelConfirm}
         title="Xác nhận hủy lịch"
-        message="Bạn có chắc muốn hủy buổi tập này? Lưu ý: Không thể hủy trong vòng 2 giờ trước buổi tập."
+        message="Bạn có chắc muốn hủy buổi tập này? Lưu ý: Không thể hủy trong vòng 4 giờ trước buổi tập."
       />
 
-      {/* Success Modal */}
       <SuccessModal
         isOpen={successOpen}
         onClose={() => setSuccessOpen(false)}
@@ -180,79 +173,18 @@ function SchedulePage() {
       />
 
       <style>{`
-        .section-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #374151;
-          margin-bottom: 20px;
-        }
-        .empty-state {
-          padding: 32px;
-          text-align: center;
-          color: #6B7280;
-          background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-        }
-        .schedule-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        .ui-card {
-          background: white;
-          border: 1px solid #E5E7EB;
-          border-radius: 12px;
-          padding: 24px;
-        }
-        .ui-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        }
-        .ui-badge {
-          padding: 4px 12px;
-          border-radius: 100px;
-          font-size: 13px;
-          font-weight: 600;
-        }
-        .ui-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #111827;
-        }
-        .ui-cancel-btn {
-          background: white;
-          border: 1px solid #E5E7EB;
-          color: #EF4444;
-          padding: 6px 16px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .ui-cancel-btn:hover {
-          background: #FEF2F2;
-          border-color: #FECACA;
-        }
-        .ui-card-body {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px 24px;
-        }
-        .ui-info {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #6B7280;
-          font-size: 14px;
-        }
-        .ui-info .icon {
-          font-size: 16px;
-          opacity: 0.7;
-        }
+        .section-title { font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 20px; }
+        .empty-state { padding: 32px; text-align: center; color: #6B7280; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+        .schedule-list { display: flex; flex-direction: column; gap: 16px; }
+        .ui-card { background: white; border: 1px solid #E5E7EB; border-radius: 12px; padding: 24px; }
+        .ui-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .ui-badge { padding: 4px 12px; border-radius: 100px; font-size: 13px; font-weight: 600; }
+        .ui-title { font-size: 16px; font-weight: 700; color: #111827; }
+        .ui-cancel-btn { background: white; border: 1px solid #E5E7EB; color: #EF4444; padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .ui-cancel-btn:hover { background: #FEF2F2; border-color: #FECACA; }
+        .ui-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+        .ui-info { display: flex; align-items: center; gap: 8px; color: #6B7280; font-size: 14px; }
+        .ui-info .icon { font-size: 16px; opacity: 0.7; }
       `}</style>
     </div>
   );

@@ -7,7 +7,7 @@ function ProtectedRoute({ allowedRoles }) {
 
   if (loading) return <div className="loading">Đang tải...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.vaiTro)) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/login" replace />;
   }
 

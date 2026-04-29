@@ -1,208 +1,73 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { socketService } from '../../services/socketService';
+import packageIcon from '../../icon/package.png';
+import calendarIcon from '../../icon/calendar.png';
 
 function DashboardPage() {
   const { user } = useAuth();
-  const [bookings, setBookings] = useState([]);
-  const [enrollment, setEnrollment] = useState(null);
+  const [stats, setStats] = useState({ totalEnrollments: 0, totalSessions: 0, remainingSessions: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-    const socket = socketService.connect();
-    socketService.on('sessionCompleted', fetchData);
-    socketService.on('slotUpdated', fetchData);
-    return () => {
-      socketService.off('sessionCompleted');
-      socketService.off('slotUpdated');
+    const fetchStats = async () => {
+      try {
+        const { data } = await api.get('/enrollment');
+        const myEnrollments = data.filter(e => (e.memberId?._id || e.memberId) === user.id);
+        const total = myEnrollments.reduce((sum, e) => sum + (e.totalSessions || 0), 0);
+        const remaining = myEnrollments.reduce((sum, e) => sum + (e.remainingSessions || 0), 0);
+        setStats({
+          totalEnrollments: myEnrollments.length,
+          totalSessions: total,
+          remainingSessions: remaining
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, []);
+    fetchStats();
+  }, [user.id]);
 
-  const fetchData = async () => {
-    try {
-      const [bookingsRes, enrollmentsRes] = await Promise.all([
-        api.get(`/lich-tap?hoiVienId=${user.id}`),
-        api.get('/dang-ky-khoa-tap')
-      ]);
-      setBookings(bookingsRes.data);
-      // Find the user's active enrollment (oldest first: by ngayDangKy then createdAt)
-      const myEnrollments = enrollmentsRes.data?.filter(e => {
-        const hvId = e.hoiVienId?._id || e.hoiVienId;
-        return hvId?.toString() === user.id?.toString() && e.soBuoiConLai > 0;
-      })?.sort((a, b) => new Date(a.ngayDangKy) - new Date(b.ngayDangKy) || new Date(a.createdAt) - new Date(b.createdAt)) || [];
-      
-      setEnrollment(myEnrollments.length > 0 ? myEnrollments[0] : null);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const upcomingBookings = bookings
-    .filter(b => b.trangThai === 'DaDat')
-    .slice(0, 5);
-
-  const completedCount = bookings.filter(b => b.trangThai === 'DaHoanThanh').length;
-
-  const statusLabels = {
-    DaDat: 'Đã đặt',
-    DaHoanThanh: 'Đã hoàn thành',
-    DaHuy: 'Đã hủy'
-  };
-
-  const statusColors = {
-    DaDat: '#3B61F0',
-    DaHoanThanh: '#22C55E',
-    DaHuy: '#EF4444'
-  };
-
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
 
   return (
-    <div>
+    <div className="dashboard-container">
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Xin chào, {user?.hoTen} 👋</h1>
-          <p className="page-subtitle">Tổng quan lịch tập của bạn</p>
-        </div>
+        <h1 className="page-title">Chào mừng, {user?.fullName}!</h1>
+        <p className="page-subtitle">Hôm nay bạn muốn tập luyện gì nào?</p>
       </div>
 
-      {/* Stats cards */}
-      <div className="dashboard-stats">
+      <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#EEF2FF' }}>📅</div>
-          <div>
-            <div className="stat-value">{upcomingBookings.length}</div>
-            <div className="stat-label">Buổi tập sắp tới</div>
+          <div className="stat-icon" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+            <img src={packageIcon} alt="" style={{ width: 24, height: 24 }} />
+          </div>
+          <div className="stat-info">
+            <div className="stat-value">{stats.totalEnrollments}</div>
+            <div className="stat-label">Khóa tập đã đăng ký</div>
           </div>
         </div>
+
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#F0FDF4' }}>✅</div>
-          <div>
-            <div className="stat-value">{completedCount}</div>
-            <div className="stat-label">Đã hoàn thành</div>
+          <div className="stat-icon" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+            <img src={calendarIcon} alt="" style={{ width: 24, height: 24 }} />
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#FFF7ED' }}>🎯</div>
-          <div>
-            <div className="stat-value">{enrollment?.soBuoiConLai ?? '—'}</div>
+          <div className="stat-info">
+            <div className="stat-value">{stats.remainingSessions}</div>
             <div className="stat-label">Buổi tập còn lại</div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#FDF2F8' }}>📋</div>
-          <div>
-            <div className="stat-value">{enrollment?.khoaTapId?.tenKhoaTap ?? '—'}</div>
-            <div className="stat-label">Khóa tập hiện tại</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming sessions */}
-      <div style={{ marginTop: 32 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Lịch tập sắp tới</h2>
-        {upcomingBookings.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: 40, color: '#6B7280' }}>
-            Chưa có buổi tập nào được đặt
-          </div>
-        ) : (
-          <div className="upcoming-list">
-            {upcomingBookings.map((booking) => (
-              <div key={booking._id} className="upcoming-card">
-                <div className="upcoming-time">
-                  <span className="time-badge">
-                    {booking.gioTapId?.gioBatDau} - {booking.gioTapId?.gioKetThuc}
-                  </span>
-                </div>
-                <div className="upcoming-info">
-                  <div className="upcoming-date">
-                    {booking.ngayTapId?.ngay ? (() => { const d = new Date(booking.ngayTapId.ngay); return `${new Date(booking.ngayTapId.ngay).toLocaleDateString('vi-VN', { weekday: 'long' })} - ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : ''}
-                  </div>
-                  <div className="upcoming-pt">PT: {booking.dangKyKhoaTapId?.ptId?.hoTen || '—'}</div>
-                </div>
-                <span className="badge" style={{ background: statusColors[booking.trangThai] + '20', color: statusColors[booking.trangThai] }}>
-                  {statusLabels[booking.trangThai]}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <style>{`
-        .dashboard-stats {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 20px;
-        }
-        .stat-card {
-          background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          padding: 20px;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 22px;
-        }
-        .stat-value {
-          font-size: 22px;
-          font-weight: 700;
-          color: var(--color-text);
-        }
-        .stat-label {
-          font-size: 13px;
-          color: var(--color-text-light);
-          margin-top: 2px;
-        }
-        .upcoming-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .upcoming-card {
-          background: white;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          padding: 16px 20px;
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-        .time-badge {
-          background: var(--color-primary);
-          color: white;
-          padding: 6px 14px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-        .upcoming-info {
-          flex: 1;
-        }
-        .upcoming-date {
-          font-weight: 600;
-          font-size: 14px;
-          text-transform: capitalize;
-        }
-        .upcoming-pt {
-          font-size: 13px;
-          color: var(--color-text-light);
-          margin-top: 2px;
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 32px; }
+        .stat-card { background: white; padding: 24px; border-radius: 16px; border: 1px solid #E5E7EB; display: flex; align-items: center; gap: 20px; transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-4px); }
+        .stat-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #111827; }
+        .stat-label { font-size: 14px; color: #6B7280; margin-top: 2px; }
       `}</style>
     </div>
   );

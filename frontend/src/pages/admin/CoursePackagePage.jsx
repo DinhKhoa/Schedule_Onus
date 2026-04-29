@@ -3,69 +3,73 @@ import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 import { AddIcon } from '../../components/Icons';
 import editIcon from '../../icon/edit.png';
 import deleteIcon from '../../icon/delete.png';
 import openBookIcon from '../../icon/open-book.png';
 
-function KhoaTapPage() {
+function CoursePackagePage() {
   const [courses, setCourses] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ tenKhoaTap: '', soBuoi: '' });
+  const [form, setForm] = useState({ name: '', totalSessions: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState({ show: false, message: '' });
 
   useEffect(() => { fetchCourses(); }, []);
 
   const fetchCourses = async () => {
     try {
-      const { data } = await api.get('/khoa-tap');
+      const { data } = await api.get('/course-package');
       setCourses(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
-  const openAdd = () => { setEditId(null); setForm({ tenKhoaTap: '', soBuoi: '' }); setModal(true); };
-  const openEdit = (c) => { setEditId(c._id); setForm({ tenKhoaTap: c.tenKhoaTap, soBuoi: c.soBuoi }); setModal(true); };
+  const openAdd = () => { setEditId(null); setForm({ name: '', totalSessions: '' }); setModal(true); };
+  const openEdit = (c) => { setEditId(c._id); setForm({ name: c.name, totalSessions: c.totalSessions }); setModal(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.tenKhoaTap || form.tenKhoaTap.trim().length < 2) {
-      return alert('Tên khóa tập phải có ít nhất 2 ký tự');
+    if (!form.name || form.name.trim().length < 2) {
+      return setError({ show: true, message: 'Tên khóa tập phải có ít nhất 2 ký tự' });
     }
-    if (form.tenKhoaTap.trim().length > 50) {
-      return alert('Tên khóa tập không được quá 50 ký tự');
+    if (form.name.trim().length > 50) {
+      return setError({ show: true, message: 'Tên khóa tập không được quá 50 ký tự' });
     }
-    if (!form.soBuoi || Number(form.soBuoi) < 1 || Number(form.soBuoi) > 40) {
-      return alert('Số buổi phải từ 1 đến 40');
+    if (!form.totalSessions || Number(form.totalSessions) < 1 || Number(form.totalSessions) > 40) {
+      return setError({ show: true, message: 'Số buổi phải từ 1 đến 40' });
     }
     try {
       if (editId) {
-        await api.put(`/khoa-tap/${editId}`, form);
+        await api.put(`/course-package/${editId}`, form);
       } else {
-        await api.post('/khoa-tap', form);
+        await api.post('/course-package', form);
       }
       setModal(false);
       fetchCourses();
     } catch (err) {
-      alert(err.response?.data?.error || 'Lỗi');
+      setError({ show: true, message: err.response?.data?.error || 'Lỗi hệ thống' });
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/khoa-tap/${id}`);
+      await api.delete(`/course-package/${id}`);
       setConfirmDeleteId(null);
       fetchCourses();
       setShowSuccess(true);
-    } catch (err) { alert(err.response?.data?.error || 'Không thể xóa'); }
+    } catch (err) { 
+      setError({ show: true, message: err.response?.data?.error || 'Không thể xóa khóa tập này' }); 
+    }
   };
 
   const filtered = courses.filter(c =>
-    c.tenKhoaTap?.toLowerCase().includes(search.toLowerCase())
+    c.name?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
@@ -84,7 +88,6 @@ function KhoaTapPage() {
         <input className="input" placeholder="Tìm kiếm khóa tập..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Course cards */}
       <div className="course-grid">
         {filtered.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: 40, color: '#6B7280', gridColumn: '1 / -1' }}>
@@ -100,23 +103,22 @@ function KhoaTapPage() {
               </div>
             </div>
             <div className="course-info-row">
-              <h3 className="course-name">{c.tenKhoaTap}</h3>
-              <span className="session-count">{c.soBuoi} buổi tập</span>
+              <h3 className="course-name">{c.name}</h3>
+              <span className="session-count">{c.totalSessions} buổi tập</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editId ? 'Chỉnh sửa khóa tập' : 'Thêm khóa tập mới'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Tên khóa tập</label>
-            <input className="input" value={form.tenKhoaTap} onChange={e => setForm({ ...form, tenKhoaTap: e.target.value })} required minLength={2} maxLength={50}/>
+            <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required minLength={2} maxLength={50}/>
           </div>
           <div className="form-group">
             <label>Số buổi tập</label>
-            <input className="input" type="number" min="1" max="40" value={form.soBuoi} onChange={e => setForm({ ...form, soBuoi: e.target.value })} required/>
+            <input className="input" type="number" min="1" max="40" value={form.totalSessions} onChange={e => setForm({ ...form, totalSessions: e.target.value })} required/>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={() => setModal(false)}>Hủy</button>
@@ -136,6 +138,12 @@ function KhoaTapPage() {
         isOpen={showSuccess}
         onClose={() => setShowSuccess(false)}
         message="Thành công"
+      />
+
+      <ErrorModal
+        isOpen={error.show}
+        onClose={() => setError({ ...error, show: false })}
+        message={error.message}
       />
 
       <style>{`
@@ -215,4 +223,4 @@ function KhoaTapPage() {
   );
 }
 
-export default KhoaTapPage;
+export default CoursePackagePage;

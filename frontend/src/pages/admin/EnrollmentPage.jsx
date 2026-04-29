@@ -3,10 +3,11 @@ import api from '../../services/api';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 import DataTable from '../../components/DataTable';
 import { AddIcon } from '../../components/Icons';
 
-function DangKyKhoaPage() {
+function EnrollmentPage() {
   const [enrollments, setEnrollments] = useState([]);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -14,55 +15,52 @@ function DangKyKhoaPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ hoiVienId: '', khoaTapId: '', ptId: '', ngayDangKy: '' });
+  const [form, setForm] = useState({ memberId: '', packageId: '', trainerId: '', registrationDate: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState({ show: false, message: '' });
 
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     try {
       const [eRes, uRes, cRes] = await Promise.all([
-        api.get('/dang-ky-khoa-tap'),
+        api.get('/enrollment'),
         api.get('/users'),
-        api.get('/khoa-tap')
+        api.get('/course-package')
       ]);
       setEnrollments(eRes.data);
       const allUsers = uRes.data;
-      setUsers(allUsers.filter(u => u.vaiTro === 'HOIVIEN'));
-      setPts(allUsers.filter(u => u.vaiTro === 'PT'));
+      setUsers(allUsers.filter(u => u.role === 'MEMBER'));
+      setPts(allUsers.filter(u => u.role === 'TRAINER'));
       setCourses(cRes.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
   const openAdd = () => {
-    setForm({ hoiVienId: '', khoaTapId: '', ptId: '', ngayDangKy: new Date().toISOString().slice(0, 10) });
+    setForm({ memberId: '', packageId: '', trainerId: '', registrationDate: new Date().toISOString().slice(0, 10) });
     setModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const course = courses.find(c => c._id === form.khoaTapId);
-      await api.post('/dang-ky-khoa-tap', {
-        ...form,
-        soBuoiConLai: course?.soBuoi || 0
-      });
+      await api.post('/enrollment', form);
       setModal(false);
       fetchAll();
     } catch (err) {
-      alert(err.response?.data?.error || 'Lỗi');
+      setError({ show: true, message: err.response?.data?.error || 'Lỗi hệ thống' });
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/dang-ky-khoa-tap/${id}`);
+      await api.delete(`/enrollment/${id}`);
       setConfirmDeleteId(null);
       fetchAll();
       setShowSuccess(true);
-    } catch (err) { alert('Không thể xóa'); }
+    } catch (err) { setError({ show: true, message: 'Không thể xóa lượt đăng ký này' }); }
   };
 
   const formatDate = (dateStr) => {
@@ -77,20 +75,20 @@ function DangKyKhoaPage() {
   const filtered = enrollments.filter(e => {
     const q = search.toLowerCase();
     return (
-      e.hoiVienId?.hoTen?.toLowerCase().includes(q) ||
-      e.khoaTapId?.tenKhoaTap?.toLowerCase().includes(q) ||
-      e.ptId?.hoTen?.toLowerCase().includes(q)
+      e.memberId?.fullName?.toLowerCase().includes(q) ||
+      e.packageId?.name?.toLowerCase().includes(q) ||
+      e.trainerId?.fullName?.toLowerCase().includes(q)
     );
   });
 
   const columns = [
     { key: '_index', label: 'ID', render: (v, row, idx) => idx + 1 },
-    { key: 'hoiVienId', label: 'Tên', render: (v) => v?.hoTen || '—' },
-    { key: 'khoaTapId', label: 'Khóa tập', render: (v) => v?.tenKhoaTap || '—' },
-    { key: 'ngayDangKy', label: 'Ngày đăng ký', render: (v) => formatDate(v) },
-    { key: 'khoaTapId', label: 'Tổng buổi', render: (v) => v?.soBuoi || '—' },
-    { key: 'soBuoiConLai', label: 'Còn lại', render: (v) => v },
-    { key: 'ptId', label: 'Huấn luyện viên', render: (v) => v?.hoTen || '—' }
+    { key: 'memberId', label: 'Tên', render: (v) => v?.fullName || '—' },
+    { key: 'packageId', label: 'Khóa tập', render: (v) => v?.name || '—' },
+    { key: 'registrationDate', label: 'Ngày đăng ký', render: (v) => formatDate(v) },
+    { key: 'totalSessions', label: 'Tổng buổi', render: (v) => v || '—' },
+    { key: 'remainingSessions', label: 'Còn lại', render: (v) => v },
+    { key: 'trainerId', label: 'Huấn luyện viên', render: (v) => v?.fullName || '—' }
   ];
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>Đang tải...</div>;
@@ -117,27 +115,27 @@ function DangKyKhoaPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Hội viên</label>
-            <select className="input" value={form.hoiVienId} onChange={e => setForm({ ...form, hoiVienId: e.target.value })} required>
+            <select className="input" value={form.memberId} onChange={e => setForm({ ...form, memberId: e.target.value })} required>
               <option value="">-- Chọn hội viên --</option>
-              {users.map(u => <option key={u._id} value={u._id}>{u.hoTen} ({u.soDienThoai})</option>)}
+              {users.map(u => <option key={u._id} value={u._id}>{u.fullName} ({u.phoneNumber})</option>)}
             </select>
           </div>
           <div className="form-group">
             <label>Khóa tập</label>
-            <select className="input" value={form.khoaTapId} onChange={e => setForm({ ...form, khoaTapId: e.target.value })} required>
+            <select className="input" value={form.packageId} onChange={e => setForm({ ...form, packageId: e.target.value })} required>
               <option value="">-- Chọn khóa tập --</option>
-              {courses.map(c => <option key={c._id} value={c._id}>{c.tenKhoaTap} ({c.soBuoi} buổi)</option>)}
+              {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.totalSessions} buổi)</option>)}
             </select>
           </div>
           <div className="form-group">
             <label>Ngày đăng ký</label>
-            <input className="input" type="date" value={form.ngayDangKy} onChange={e => setForm({ ...form, ngayDangKy: e.target.value })} required max={new Date().toISOString().slice(0, 10)} />
+            <input className="input" type="date" value={form.registrationDate} onChange={e => setForm({ ...form, registrationDate: e.target.value })} required max={new Date().toISOString().slice(0, 10)} />
           </div>
           <div className="form-group">
             <label>PT phụ trách</label>
-            <select className="input" value={form.ptId} onChange={e => setForm({ ...form, ptId: e.target.value })} required>
+            <select className="input" value={form.trainerId} onChange={e => setForm({ ...form, trainerId: e.target.value })} required>
               <option value="">-- Chọn PT --</option>
-              {pts.map(p => <option key={p._id} value={p._id}>{p.hoTen}</option>)}
+              {pts.map(p => <option key={p._id} value={p._id}>{p.fullName}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
@@ -164,8 +162,14 @@ function DangKyKhoaPage() {
         onClose={() => setShowSuccess(false)}
         message="Thành công"
       />
+
+      <ErrorModal
+        isOpen={error.show}
+        onClose={() => setError({ ...error, show: false })}
+        message={error.message}
+      />
     </div>
   );
 }
 
-export default DangKyKhoaPage;
+export default EnrollmentPage;
