@@ -8,6 +8,14 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  const normalizeUser = (u) => {
+    if (!u) return null;
+    return {
+      ...u,
+      id: u.id || u._id
+    };
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       if (token) {
@@ -22,16 +30,16 @@ export function AuthProvider({ children }) {
                 .join('')
             )
           );
-          setUser({
+          setUser(normalizeUser({
             id: payload.id,
             fullName: payload.fullName,
             role: payload.role,
             gender: payload.gender
-          });
+          }));
 
           // 2. Lấy dữ liệu "tươi" nhất từ Database
           const { data } = await api.get('/users/profile');
-          setUser(data);
+          setUser(normalizeUser(data));
         } catch (err) {
           console.error('Auth Init Error:', err);
           // Nếu token hết hạn hoặc lỗi, logout
@@ -47,17 +55,17 @@ export function AuthProvider({ children }) {
   const login = (newToken, userData) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
-    setUser(userData);
+    setUser(normalizeUser(userData));
   };
 
   const updateUser = (userData) => {
-    setUser(prev => ({ ...prev, ...userData }));
+    setUser(prev => normalizeUser({ ...prev, ...userData }));
   };
 
   const updateAuth = (newToken, userData) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
-    setUser(userData);
+    setUser(normalizeUser(userData));
   };
 
   const logout = () => {

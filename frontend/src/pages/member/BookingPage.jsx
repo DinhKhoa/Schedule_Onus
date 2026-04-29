@@ -120,7 +120,7 @@ function BookingPage() {
     if (slot.myBookingId && slot.status === 'Booked') {
       setCancelSlot(slot);
       setCancelOpen(true);
-      setErrorMsg('');
+      setError({ show: false, message: '' });
       return;
     }
 
@@ -129,7 +129,7 @@ function BookingPage() {
 
     setConfirmSlot(slot);
     setConfirmOpen(true);
-    setErrorMsg('');
+    setError({ show: false, message: '' });
   };
 
   const handleBookConfirm = async () => {

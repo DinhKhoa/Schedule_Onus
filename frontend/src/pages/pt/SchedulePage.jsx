@@ -55,9 +55,11 @@ function SchedulePage() {
     socketService.connect();
     socketService.on('slotUpdated', fetchBookings);
     socketService.on('sessionCompleted', fetchBookings);
+    socketService.on('sessionUpdated', fetchBookings);
     return () => {
       socketService.off('slotUpdated');
       socketService.off('sessionCompleted');
+      socketService.off('sessionUpdated');
     };
   }, [user.id]);
 

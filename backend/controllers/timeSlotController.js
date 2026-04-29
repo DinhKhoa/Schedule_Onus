@@ -3,15 +3,18 @@ const TrainingDate = require("../models/TrainingDate");
 const Booking = require("../models/Booking");
 const Enrollment = require("../models/Enrollment");
 const SlotStatus = require("../models/SlotStatus");
+const TrainerDayStatus = require("../models/TrainerDayStatus");
+const TrainerSlotStatus = require("../models/TrainerSlotStatus");
 
 // GET /api/time-slot
 exports.getAll = async (req, res, next) => {
 	try {
-		const { trainingDateId, memberId } = req.query;
+		const { trainingDateId, memberId, trainerId: trainerIdQuery } = req.query;
 		const slots = await TimeSlot.find().sort({ startTime: 1 });
 		if (trainingDateId) {
 			// Admin request: merge per-day overrides
-			if (!memberId) {
+      const effectiveMemberId = req.user?.role === "MEMBER" ? req.user.id : memberId;
+			if (!effectiveMemberId) {
 				const overrides = await SlotStatus.find({ trainingDateId });
 				const overrideMap = {};
 				overrides.forEach(o => { overrideMap[o.timeSlotId.toString()] = o.status; });
@@ -24,6 +27,19 @@ exports.getAll = async (req, res, next) => {
 					}
 					return slotObj;
 				});
+
+        if (trainerIdQuery) {
+          const dayStatus = await TrainerDayStatus.findOne({ trainerId: trainerIdQuery, trainingDateId });
+          const slotStatuses = await TrainerSlotStatus.find({ trainerId: trainerIdQuery, trainingDateId });
+          const slotMap = {};
+          slotStatuses.forEach(s => { slotMap[s.timeSlotId.toString()] = s.status; });
+          return res.json(slotsWithOverride.map(slot => {
+            const slotObj = { ...slot };
+            slotObj.trainerDayStatus = dayStatus?.status || 'Available';
+            slotObj.trainerSlotStatus = slotMap[slot._id.toString()] || 'Available';
+            return slotObj;
+          }));
+        }
 				return res.json(slotsWithOverride);
 			}
 
@@ -31,11 +47,11 @@ exports.getAll = async (req, res, next) => {
 			let trainerId = null;
 			
 			const enrollments = await Enrollment.find({
-				$or: [{ memberId }, { trainerId: { $ne: null } }],
+				$or: [{ memberId: effectiveMemberId }, { trainerId: { $ne: null } }],
 			}).select("_id trainerId memberId");
 
 			const myMainEnrollment = await Enrollment.findOne({
-				memberId,
+				memberId: effectiveMemberId,
 				remainingSessions: { $gt: 0 },
 			}).sort({ registrationDate: 1, createdAt: 1 });
 
@@ -44,7 +60,7 @@ exports.getAll = async (req, res, next) => {
 			relevantEnrollmentIds = enrollments
 				.filter(
 					(e) =>
-						e.memberId.toString() === memberId ||
+						e.memberId.toString() === effectiveMemberId ||
 						(trainerId && e.trainerId.toString() === trainerId.toString()),
 				)
 				.map((e) => e._id);
@@ -58,6 +74,11 @@ exports.getAll = async (req, res, next) => {
 						}).populate("enrollmentId", "memberId trainerId")
 					: [];
 
+      const dayStatus = trainerId ? await TrainerDayStatus.findOne({ trainerId, trainingDateId }) : null;
+      const trainerSlotStatuses = trainerId ? await TrainerSlotStatus.find({ trainerId, trainingDateId }) : [];
+      const trainerSlotMap = {};
+      trainerSlotStatuses.forEach(s => { trainerSlotMap[s.timeSlotId.toString()] = s.status; });
+
 			const slotsWithStatus = slots.map((slot) => {
 				const slotObj = slot.toObject();
 
@@ -66,7 +87,7 @@ exports.getAll = async (req, res, next) => {
 					(b) =>
 						b.timeSlotId.toString() === slot._id.toString() &&
 						b.enrollmentId &&
-						b.enrollmentId.memberId.toString() === memberId,
+						b.enrollmentId.memberId.toString() === effectiveMemberId,
 				);
 
 				if (myBooking) {
@@ -79,6 +100,14 @@ exports.getAll = async (req, res, next) => {
 
 				// Find if PT is busy here
 				if (trainerId) {
+          if (dayStatus?.status === 'Unavailable') {
+            slotObj.status = 'Inactive';
+            return slotObj;
+          }
+          if (trainerSlotMap[slot._id.toString()] === 'Unavailable') {
+            slotObj.status = 'Inactive';
+            return slotObj;
+          }
 					const ptBusy = bookings.find(
 						(b) =>
 							b.timeSlotId.toString() === slot._id.toString() &&

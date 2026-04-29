@@ -8,6 +8,7 @@ const trainingDateRoutes = require('./trainingDateRoutes');
 const timeSlotRoutes = require('./timeSlotRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const slotStatusRoutes = require('./slotStatusRoutes');
+const trainerAvailabilityRoutes = require('./trainerAvailabilityRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -17,5 +18,6 @@ router.use('/training-date', trainingDateRoutes);
 router.use('/time-slot', timeSlotRoutes);
 router.use('/booking', bookingRoutes);
 router.use('/slot-status', slotStatusRoutes);
+router.use('/trainer-availability', trainerAvailabilityRoutes);
 
 module.exports = router;

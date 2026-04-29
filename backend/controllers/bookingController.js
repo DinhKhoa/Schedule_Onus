@@ -9,11 +9,23 @@ exports.getAll = async (req, res, next) => {
   try {
     const { memberId, trainerId } = req.query;
     const filter = {};
+    const { role, id } = req.user;
 
-    if (memberId || trainerId) {
+    let enforcedMemberId = memberId;
+    let enforcedTrainerId = trainerId;
+    if (role === 'MEMBER') {
+      enforcedMemberId = id;
+      enforcedTrainerId = undefined;
+    }
+    if (role === 'TRAINER') {
+      enforcedTrainerId = id;
+      enforcedMemberId = undefined;
+    }
+
+    if (enforcedMemberId || enforcedTrainerId) {
       const enrollmentFilter = {};
-      if (memberId) enrollmentFilter.memberId = memberId;
-      if (trainerId) enrollmentFilter.trainerId = trainerId;
+      if (enforcedMemberId) enrollmentFilter.memberId = enforcedMemberId;
+      if (enforcedTrainerId) enrollmentFilter.trainerId = enforcedTrainerId;
       const enrollments = await Enrollment.find(enrollmentFilter).select('_id');
       filter.enrollmentId = { $in: enrollments.map(e => e._id) };
     }
@@ -53,7 +65,12 @@ exports.getAll = async (req, res, next) => {
 // POST /api/booking — Book a session
 exports.create = async (req, res, next) => {
   try {
-    const result = await bookingService.bookSession(req.body, req.app.get('io'));
+    const payload = {
+      ...req.body,
+      // Always trust authenticated user identity instead of client-provided memberId
+      memberId: req.user.id
+    };
+    const result = await bookingService.bookSession(payload, req.app.get('io'));
     res.status(201).json(result);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
@@ -75,7 +92,7 @@ exports.cancel = async (req, res, next) => {
 // PUT /api/booking/:id/complete — PT marks session as complete
 exports.complete = async (req, res, next) => {
   try {
-    const result = await bookingService.completeSession(req.params.id, req.app.get('io'));
+    const result = await bookingService.completeSession(req.params.id, req.app.get('io'), req.user.id);
     res.json(result);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });

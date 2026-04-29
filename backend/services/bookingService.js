@@ -4,6 +4,8 @@ const TimeSlot = require('../models/TimeSlot');
 const SlotStatus = require('../models/SlotStatus');
 const Enrollment = require('../models/Enrollment');
 const TrainingDate = require('../models/TrainingDate');
+const TrainerDayStatus = require('../models/TrainerDayStatus');
+const TrainerSlotStatus = require('../models/TrainerSlotStatus');
 
 /**
  * Book a session
@@ -42,12 +44,28 @@ exports.bookSession = async (data, io) => {
     }
 
     // 3. Find active enrollment
+    console.log('DEBUG: Booking for memberId:', memberId);
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+    } catch (e) {
+      memberObjectId = memberId;
+    }
+
     const enrollment = await Enrollment.findOne({
-      memberId,
+      memberId: memberObjectId,
       remainingSessions: { $gt: 0 }
     }).sort({ registrationDate: 1, createdAt: 1 }).session(session);
 
     if (!enrollment) {
+      const allEnrollments = await Enrollment.find({ memberId: memberId }).session(session);
+      console.log('DEBUG: No active enrollment found. Total enrollments found for this ID:', allEnrollments.length);
+      if (allEnrollments.length > 0) {
+        console.log('DEBUG: First enrollment details:', {
+          remaining: allEnrollments[0].remainingSessions,
+          memberIdInDB: allEnrollments[0].memberId
+        });
+      }
       throw { status: 400, message: 'Bạn không còn buổi tập khả dụng. Vui lòng đăng ký khóa tập mới.' };
     }
 
@@ -77,6 +95,15 @@ exports.bookSession = async (data, io) => {
 
     // 5. Check PT busy
     const trainerId = enrollment.trainerId;
+    const trainerDayStatus = await TrainerDayStatus.findOne({ trainerId, trainingDateId }).session(session);
+    if (trainerDayStatus && trainerDayStatus.status === 'Unavailable') {
+      throw { status: 400, message: 'PT không làm việc trong ngày này.' };
+    }
+    const trainerSlotStatus = await TrainerSlotStatus.findOne({ trainerId, trainingDateId, timeSlotId }).session(session);
+    if (trainerSlotStatus && trainerSlotStatus.status === 'Unavailable') {
+      throw { status: 400, message: 'PT không làm việc trong khung giờ này.' };
+    }
+
     const ptBooking = await Booking.findOne({
       trainingDateId,
       timeSlotId,
@@ -175,7 +202,7 @@ exports.cancelSession = async (bookingId, io) => {
 /**
  * Complete a session
  */
-exports.completeSession = async (bookingId, io) => {
+exports.completeSession = async (bookingId, io, trainerIdFromToken) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -186,11 +213,16 @@ exports.completeSession = async (bookingId, io) => {
       throw { status: 400, message: 'Lịch tập không hợp lệ. Chỉ có thể xác nhận buổi học đang ở trạng thái "Đã đặt".' };
     }
 
+    const owningEnrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    if (!owningEnrollment || owningEnrollment.trainerId.toString() !== trainerIdFromToken.toString()) {
+      throw { status: 403, message: 'Bạn chỉ có thể xác nhận buổi tập của chính mình.' };
+    }
+
     booking.status = 'Completed';
     await booking.save({ session });
 
     // Deduct session on completion
-    const enrollment = await Enrollment.findById(booking.enrollmentId).session(session);
+    const enrollment = owningEnrollment;
     if (enrollment) {
       enrollment.remainingSessions -= 1;
       await enrollment.save({ session });

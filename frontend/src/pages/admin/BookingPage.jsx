@@ -11,6 +11,8 @@ import onOffIcon from "../../icon/on-off-button.png";
 
 function BookingPage() {
 	const [selectedDate, setSelectedDate] = useState("");
+	const [selectedTrainerId, setSelectedTrainerId] = useState("");
+	const [trainers, setTrainers] = useState([]);
 	const [days, setDays] = useState([]);
 	const [slots, setSlots] = useState({});
 	const [loading, setLoading] = useState(false);
@@ -38,12 +40,17 @@ function BookingPage() {
 	useEffect(() => {
 		const today = new Date().toISOString().slice(0, 10);
 		handleDateChange(today);
+		fetchTrainers();
 		socketService.connect();
 		return () => {
 			socketService.off("slotUpdated");
 			socketService.off("slotCreated");
 		};
 	}, []);
+
+	useEffect(() => {
+		if (selectedDate) fetchDayData(selectedDate, true);
+	}, [selectedTrainerId]);
 
 	useEffect(() => {
 		if (selectedDate) {
@@ -71,12 +78,23 @@ function BookingPage() {
 		if (!silent) setLoading(true);
 		try {
 			const { data: dayList } = await api.get(`/training-date?date=${date}`);
-			setDays(dayList);
+			let normalizedDays = dayList;
+			if (selectedTrainerId) {
+				const dayWithPTStatus = await Promise.all(
+					dayList.map(async (day) => {
+						const av = await api.get(`/trainer-availability?trainerId=${selectedTrainerId}&trainingDateId=${day._id}`);
+						return { ...day, status: av.data?.dayStatus === "Unavailable" ? "Inactive" : "Active" };
+					}),
+				);
+				normalizedDays = dayWithPTStatus;
+			}
+			setDays(normalizedDays);
 
 			const slotsMap = {};
 			await Promise.all(
-				dayList.map(async (day) => {
-					const res = await api.get(`/time-slot?trainingDateId=${day._id}`);
+				normalizedDays.map(async (day) => {
+					const trainerQ = selectedTrainerId ? `&trainerId=${selectedTrainerId}` : "";
+					const res = await api.get(`/time-slot?trainingDateId=${day._id}${trainerQ}`);
 					slotsMap[day._id] = res.data;
 				}),
 			);
@@ -85,6 +103,15 @@ function BookingPage() {
 			console.error(err);
 		} finally {
 			if (!silent) setLoading(false);
+		}
+	};
+
+	const fetchTrainers = async () => {
+		try {
+			const { data } = await api.get("/users");
+			setTrainers((data || []).filter((u) => u.role === "TRAINER"));
+		} catch (err) {
+			console.error(err);
 		}
 	};
 
@@ -103,7 +130,9 @@ function BookingPage() {
 		setDays(prev => prev.map(d => d._id === day._id ? { ...d, status: newStatus } : d));
 
 		try {
-			const res = await api.put("/slot-status/toggle-day", { trainingDateId: day._id });
+			const res = selectedTrainerId
+				? await api.put("/trainer-availability/toggle-day", { trainerId: selectedTrainerId, trainingDateId: day._id })
+				: await api.put("/slot-status/toggle-day", { trainingDateId: day._id });
 			if (res.data.warning) setWarning(res.data.warning);
 		} catch (err) {
 			setDays(originalDays);
@@ -148,9 +177,13 @@ function BookingPage() {
 		});
 
 		try {
-			const res = await api.put("/slot-status/toggle-slot", { trainingDateId, timeSlotId: slotId });
+			const res = selectedTrainerId
+				? await api.put("/trainer-availability/toggle-slot", { trainerId: selectedTrainerId, trainingDateId, timeSlotId: slotId })
+				: await api.put("/slot-status/toggle-slot", { trainingDateId, timeSlotId: slotId });
 			if (res.data.warning) setWarning(res.data.warning);
-			const newStatus = res.data.status;
+			const newStatus = selectedTrainerId
+				? (res.data.status === "Unavailable" ? "Inactive" : "Active")
+				: res.data.status;
 			setSlots(prev => {
 				const newSlots = { ...prev };
 				Object.keys(newSlots).forEach(dId => {
@@ -190,8 +223,11 @@ function BookingPage() {
 		});
 
 		try {
-			const res = await api.put("/slot-status/toggle-global", { timeSlotId: slotId });
+			const res = selectedTrainerId
+				? await api.put("/trainer-availability/toggle-slot-global", { trainerId: selectedTrainerId, timeSlotId: slotId })
+				: await api.put("/slot-status/toggle-global", { timeSlotId: slotId });
 			if (res.data.warning) setWarning(res.data.warning);
+			if (selectedTrainerId) fetchDayData(selectedDate, true);
 		} catch (err) {
 			setSlots(originalSlots);
 			setError({ show: true, message: err.response?.data?.error || "Lỗi cập nhật trạng thái" });
@@ -314,6 +350,18 @@ function BookingPage() {
 						onChange={(e) => handleDateChange(e.target.value)}
 						style={{ width: "auto" }}
 					/>
+					<select
+						className="input"
+						value={selectedTrainerId}
+						onChange={(e) => setSelectedTrainerId(e.target.value)}
+						style={{ width: "260px" }}>
+						<option value="">-- Lịch chung (không chọn PT) --</option>
+						{trainers.map((pt) => (
+							<option key={pt._id} value={pt._id}>
+								{pt.fullName}
+							</option>
+						))}
+					</select>
 				</div>
 			</div>
 
