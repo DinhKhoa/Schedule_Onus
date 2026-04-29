@@ -12,8 +12,16 @@ export function AuthProvider({ children }) {
     const initAuth = async () => {
       if (token) {
         try {
-          // 1. Giải mã tạm thời để hiện UI nhanh
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          // 1. Giải mã tạm thời để hiện UI nhanh (Hỗ trợ tiếng Việt UTF-8)
+          const base64 = token.split('.')[1];
+          const payload = JSON.parse(
+            decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            )
+          );
           setUser({
             id: payload.id,
             fullName: payload.fullName,

@@ -1,13 +1,21 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Admin = require('../models/Admin');
 
 // GET /api/users/profile
 exports.getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
-    res.json(user);
+    let account = await User.findById(req.user.id).select('-password');
+    if (!account) {
+      account = await Admin.findById(req.user.id).select('-password');
+      if (account) {
+        account = { ...account.toObject(), role: 'ADMIN' };
+      }
+    }
+    
+    if (!account) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    res.json(account);
   } catch (error) {
     next(error);
   }
@@ -158,17 +166,29 @@ exports.updateProfile = async (req, res, next) => {
       updates.phoneNumber = phoneNumber;
     }
 
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true }).select('-password');
-    if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    let account = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true }).select('-password');
+    
+    if (!account) {
+      // Nếu không phải User, thử cập nhật bảng Admin (chỉ lấy các trường Admin có)
+      const adminUpdates = {};
+      if (fullName) adminUpdates.fullName = fullName.trim();
+      
+      account = await Admin.findByIdAndUpdate(userId, adminUpdates, { new: true }).select('-password');
+      if (account) {
+        account = { ...account.toObject(), role: 'ADMIN' };
+      }
+    }
 
-    // Cấp Token mới chứa thông tin mới cập nhật
+    if (!account) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+
+    // Cấp Token mới
     const token = jwt.sign(
-      { id: user._id, role: user.role, fullName: user.fullName, gender: user.gender },
+      { id: account._id || account.id, role: account.role || 'MEMBER', fullName: account.fullName, gender: account.gender },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
-    res.json({ user, token });
+    res.json({ user: account, token });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Số điện thoại đã tồn tại trong hệ thống' });
