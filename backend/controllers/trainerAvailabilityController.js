@@ -34,8 +34,16 @@ exports.toggleDay = async (req, res, next) => {
       return res.status(400).json({ error: 'trainerId và trainingDateId là bắt buộc' });
     }
 
-    const trainingDay = await TrainingDate.findById(trainingDateId).select('status');
-    if (trainingDay && trainingDay.status === 'Inactive') {
+    const trainingDay = await TrainingDate.findById(trainingDateId);
+    if (!trainingDay) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(trainingDay.date) < today) {
+      return res.status(400).json({ error: 'Không thể chỉnh sửa trạng thái cho các ngày trong quá khứ' });
+    }
+
+    if (trainingDay.status === 'Inactive') {
       return res.status(400).json({ error: 'Ngày chung đang tắt. Không thể bật ngày riêng cho PT.' });
     }
 
@@ -59,6 +67,15 @@ exports.toggleSlot = async (req, res, next) => {
     const { trainerId, trainingDateId, timeSlotId } = req.body;
     if (!trainerId || !trainingDateId || !timeSlotId) {
       return res.status(400).json({ error: 'trainerId, trainingDateId, timeSlotId là bắt buộc' });
+    }
+
+    const trainingDay = await TrainingDate.findById(trainingDateId);
+    if (!trainingDay) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(trainingDay.date) < today) {
+      return res.status(400).json({ error: 'Không thể chỉnh sửa trạng thái cho các ngày trong quá khứ' });
     }
 
     const existing = await TrainerSlotStatus.findOne({ trainerId, trainingDateId, timeSlotId });

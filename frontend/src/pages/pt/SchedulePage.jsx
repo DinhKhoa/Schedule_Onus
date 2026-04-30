@@ -227,8 +227,22 @@ function SchedulePage() {
                        </div>
                     ) : isPending ? (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn-hoanthanh" onClick={() => handleAccept(booking._id)}>Nhận lịch</button>
-                        <button className="btn-hoanthanh" style={{ background: '#FEE2E2', color: '#DC2626' }} onClick={() => handleReject(booking._id)}>Từ chối</button>
+                        <button 
+                          className="btn-hoanthanh" 
+                          onClick={() => handleAccept(booking._id)}
+                          disabled={new Date(booking.trainingDateId?.date) < todayHelper}
+                          style={new Date(booking.trainingDateId?.date) < todayHelper ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                        >
+                          Nhận lịch
+                        </button>
+                        <button 
+                          className="btn-hoanthanh" 
+                          style={new Date(booking.trainingDateId?.date) < todayHelper ? { background: '#FEE2E2', color: '#DC2626', opacity: 0.5, cursor: 'not-allowed' } : { background: '#FEE2E2', color: '#DC2626' }} 
+                          onClick={() => handleReject(booking._id)}
+                          disabled={new Date(booking.trainingDateId?.date) < todayHelper}
+                        >
+                          Từ chối
+                        </button>
                       </div>
                     ) : isBooked ? (
                       <button

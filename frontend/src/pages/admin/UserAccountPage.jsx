@@ -98,11 +98,12 @@ function UserAccountPage() {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/users/${id}`);
-      setConfirmDeleteId(null);
       fetchUsers();
       setShowSuccess(true);
     } catch (err) { 
-      setError({ show: true, message: 'Không thể xóa tài khoản này' }); 
+      setError({ show: true, message: err.response?.data?.error || 'Không thể xóa tài khoản này' }); 
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 

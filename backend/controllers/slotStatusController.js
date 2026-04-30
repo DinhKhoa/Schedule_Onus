@@ -23,6 +23,15 @@ exports.toggleSlotForDay = async (req, res, next) => {
       return res.status(400).json({ error: 'Thiếu trainingDateId hoặc timeSlotId' });
     }
 
+    const day = await TrainingDate.findById(trainingDateId);
+    if (!day) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(day.date) < today) {
+      return res.status(400).json({ error: 'Không thể chỉnh sửa trạng thái cho các ngày trong quá khứ' });
+    }
+
     const slot = await TimeSlot.findById(timeSlotId);
     if (!slot) return res.status(404).json({ error: 'Không tìm thấy khung giờ' });
 
@@ -110,6 +119,12 @@ exports.toggleDay = async (req, res, next) => {
 
     const day = await TrainingDate.findById(trainingDateId);
     if (!day) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(day.date) < today) {
+      return res.status(400).json({ error: 'Không thể chỉnh sửa trạng thái cho các ngày trong quá khứ' });
+    }
 
     const newStatus = day.status === 'Active' ? 'Inactive' : 'Active';
     day.status = newStatus;

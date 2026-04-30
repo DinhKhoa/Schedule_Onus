@@ -58,10 +58,13 @@ function EnrollmentPage() {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/enrollment/${id}`);
-      setConfirmDeleteId(null);
       fetchAll();
       setShowSuccess(true);
-    } catch (err) { setError({ show: true, message: 'Không thể xóa lượt đăng ký này' }); }
+    } catch (err) { 
+      setError({ show: true, message: err.response?.data?.error || 'Không thể xóa lượt đăng ký này' }); 
+    } finally {
+      setConfirmDeleteId(null);
+    }
   };
 
   const formatDate = (dateStr) => formatDateVN(dateStr);

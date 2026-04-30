@@ -123,6 +123,8 @@ exports.bookSession = async (data, io) => {
     const booking = await Booking.create([{
       timeSlotId, trainingDateId,
       enrollmentId: enrollment._id,
+      memberId: enrollment.memberId,
+      trainerId: enrollment.trainerId,
       status: 'PendingTrainerConfirm'
     }], { session });
 

@@ -85,7 +85,16 @@ exports.update = async (req, res, next) => {
 // DELETE /api/course-package/:id
 exports.remove = async (req, res, next) => {
   try {
-    const course = await CoursePackage.findByIdAndDelete(req.params.id);
+    const packageId = req.params.id;
+
+    // Check if there are any enrollments linked to this package
+    const Enrollment = require('../models/Enrollment');
+    const hasEnrollments = await Enrollment.findOne({ packageId });
+    if (hasEnrollments) {
+      return res.status(400).json({ error: 'Không thể xóa khóa tập này vì đã có hội viên đăng ký. Vui lòng kiểm tra lại.' });
+    }
+
+    const course = await CoursePackage.findByIdAndDelete(packageId);
     if (!course) return res.status(404).json({ error: 'Không tìm thấy khóa tập' });
     res.json({ message: 'Xóa khóa tập thành công' });
   } catch (error) {

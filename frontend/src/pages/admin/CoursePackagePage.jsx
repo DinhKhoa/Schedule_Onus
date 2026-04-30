@@ -60,11 +60,12 @@ function CoursePackagePage() {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/course-package/${id}`);
-      setConfirmDeleteId(null);
       fetchCourses();
       setShowSuccess(true);
     } catch (err) { 
       setError({ show: true, message: err.response?.data?.error || 'Không thể xóa khóa tập này' }); 
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 

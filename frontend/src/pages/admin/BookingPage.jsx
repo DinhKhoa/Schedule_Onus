@@ -239,6 +239,14 @@ function BookingPage() {
 			setLoading(false);
 		}
 	};
+	const isPastDay = (dateStr) => {
+		if (!dateStr) return false;
+		const d = new Date(dateStr);
+		d.setHours(0, 0, 0, 0);
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		return d < today;
+	};
 
 	const openAddSlot = (dayId) => {
 		setAddForm({
@@ -254,7 +262,6 @@ function BookingPage() {
 		e.preventDefault();
 		try {
 			await api.post("/time-slot", addForm);
-			setAddModal(false);
 			fetchDayData(selectedDate, true);
 			setSuccessMessage(
 				addForm.applyToAll ? "Đã thêm cho tất cả các ngày" : "Thêm thành công",
@@ -262,6 +269,8 @@ function BookingPage() {
 			setShowSuccess(true);
 		} catch (err) {
 			setError({ show: true, message: err.response?.data?.error || "Lỗi thêm khung giờ" });
+		} finally {
+			setAddModal(false);
 		}
 	};
 
@@ -286,7 +295,6 @@ function BookingPage() {
 
 		try {
 			await api.delete(`/time-slot/${idToDelete}?deleteAll=${deleteAll}`);
-			setDeleteSlot(null);
 			if (deleteAll) fetchDayData(selectedDate, true);
 			setSuccessMessage(
 				deleteAll ? "Đã xóa từ tất cả các ngày" : "Xóa thành công",
@@ -297,6 +305,7 @@ function BookingPage() {
 			setError({ show: true, message: err.response?.data?.error || "Không thể xóa" });
 		} finally {
 			setLoading(false);
+			setDeleteSlot(null);
 		}
 	};
 
@@ -336,7 +345,11 @@ function BookingPage() {
 					</p>
 				</div>
 				{days.length > 0 && (
-					<button className="btn btn-primary" onClick={() => openAddSlot(days[0]._id)}>
+					<button 
+						className="btn btn-primary" 
+						onClick={() => openAddSlot(days[0]._id)}
+						disabled={isPastDay(selectedDate)}
+						style={isPastDay(selectedDate) ? { opacity: 0.5, cursor: "not-allowed" } : {}}>
 						<AddIcon /> Thêm mới
 					</button>
 				)}
@@ -443,7 +456,8 @@ function BookingPage() {
 							<div className="toggle-wrapper">
 								<span
 									className={`toggle ${day.status === "Active" ? "active" : ""}`}
-									onClick={() => toggleDay(day)}
+									onClick={() => !isPastDay(selectedDate) && toggleDay(day)}
+									style={isPastDay(selectedDate) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
 								/>
 							</div>
 						</div>
@@ -478,8 +492,8 @@ function BookingPage() {
 											</div>
 											<button
 												className="delete-btn-simple"
-												onClick={() => openDeleteModal(slot)}
-												style={slot.day.status !== "Active" ? { opacity: 0.5, pointerEvents: "none" } : {}}>
+												onClick={() => !isPastDay(selectedDate) && openDeleteModal(slot)}
+												style={slot.day.status !== "Active" || isPastDay(selectedDate) ? { opacity: 0.5, pointerEvents: "none" } : {}}>
 												<img src={deleteIcon} alt="Delete" />
 											</button>
 										</div>
@@ -502,8 +516,8 @@ function BookingPage() {
 												)}
 												<span
 													className={`toggle ${slot.status === "Active" ? "active" : ""}`}
-													onClick={() => openToggleModal(slot)}
-													style={slot.day.status !== "Active" ? { opacity: 0.5, pointerEvents: "none" } : {}}
+													onClick={() => !isPastDay(selectedDate) && openToggleModal(slot)}
+													style={slot.day.status !== "Active" || isPastDay(selectedDate) ? { opacity: 0.5, pointerEvents: "none" } : {}}
 												/>
 											</div>
 										</div>

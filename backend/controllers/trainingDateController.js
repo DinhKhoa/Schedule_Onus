@@ -36,8 +36,17 @@ exports.create = async (req, res, next) => {
 // PUT /api/training-date/:id
 exports.update = async (req, res, next) => {
   try {
-    const day = await TrainingDate.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!day) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+    const dayId = req.params.id;
+    const existingDay = await TrainingDate.findById(dayId);
+    if (!existingDay) return res.status(404).json({ error: 'Không tìm thấy ngày tập' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(existingDay.date) < today) {
+      return res.status(400).json({ error: 'Không thể chỉnh sửa thông tin cho các ngày trong quá khứ' });
+    }
+
+    const day = await TrainingDate.findByIdAndUpdate(dayId, req.body, { new: true, runValidators: true });
     res.json(day);
   } catch (error) {
     next(error);
