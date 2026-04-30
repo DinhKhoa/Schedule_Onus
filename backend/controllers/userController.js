@@ -203,18 +203,32 @@ exports.remove = async (req, res, next) => {
   try {
     const userId = req.params.id;
     
-    // Check if user is linked to any enrollment (either as member or trainer)
-    const hasEnrollments = await Enrollment.findOne({
-      $or: [{ memberId: userId }, { trainerId: userId }]
+    // Check if user has any ACTIVE enrollment (remainingSessions > 0)
+    const activeEnrollment = await Enrollment.findOne({
+      memberId: userId,
+      remainingSessions: { $gt: 0 }
     });
     
-    if (hasEnrollments) {
-      return res.status(400).json({ error: 'Không thể xóa người dùng này vì đang có dữ liệu liên quan đến khóa tập/lịch dạy. Vui lòng kiểm tra lại.' });
+    if (activeEnrollment) {
+      return res.status(400).json({ error: 'Không thể xóa hội viên này vì vẫn còn gói tập chưa tập hết.' });
     }
 
+    // Check if user is a trainer with active enrollments
+    const activeTrainer = await Enrollment.findOne({
+      trainerId: userId,
+      remainingSessions: { $gt: 0 }
+    });
+    if (activeTrainer) {
+      return res.status(400).json({ error: 'Không thể xóa PT này vì đang chịu trách nhiệm cho các gói tập còn hiệu lực.' });
+    }
+
+    // If we reach here, we can delete the user and their history
+    await Booking.deleteMany({ $or: [{ memberId: userId }, { trainerId: userId }] });
+    await Enrollment.deleteMany({ $or: [{ memberId: userId }, { trainerId: userId }] });
     const user = await User.findByIdAndDelete(userId);
+    
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
-    res.json({ message: 'Xóa tài khoản thành công' });
+    res.json({ message: 'Xóa tài khoản thành công cùng toàn bộ lịch sử liên quan' });
   } catch (error) {
     next(error);
   }
