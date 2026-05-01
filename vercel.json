@@ -6,12 +6,16 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/[...all]"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "functions": {
     "api/[...all].js": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 30
     }
   }
 }
