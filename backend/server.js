@@ -37,18 +37,36 @@ app.use(['/api', '/'], routes);
 // Error handler
 app.use(errorHandler);
 
-// Start
+// Start server (only for local development)
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
-  const io = initSocket(server);
-  app.set('io', io);
+// Initialize database connection and socket for non-serverless environments
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  connectDB().then(() => {
+    const io = initSocket(server);
+    app.set('io', io);
 
-  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-  }
-});
+  });
+} else {
+  // For Vercel serverless, connect to DB on first request
+  let dbConnected = false;
+  
+  app.use(async (req, res, next) => {
+    if (!dbConnected) {
+      try {
+        await connectDB();
+        dbConnected = true;
+        console.log('Database connected in serverless environment');
+      } catch (error) {
+        console.error('Database connection error:', error);
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
+    }
+    next();
+  });
+}
 
 module.exports = app;

@@ -7,6 +7,11 @@ exports.login = async (req, res, next) => {
   try {
     const { phoneNumber, password } = req.body;
 
+    // Validation
+    if (!phoneNumber || !password) {
+      return res.status(400).json({ error: "Vui lòng nhập số điện thoại và mật khẩu" });
+    }
+
     // Check if it's an Admin (using username instead of phoneNumber in Admin model)
     const admin = await Admin.findOne({
       username: { $regex: new RegExp(`^${phoneNumber}$`, "i") },
@@ -19,8 +24,8 @@ exports.login = async (req, res, next) => {
 
       const token = jwt.sign(
         { id: admin._id, role: "ADMIN", fullName: admin.fullName },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN },
+        process.env.JWT_SECRET || 'onus_fitness_jwt_secret_key_2024',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
       );
       return res.json({
         token,
@@ -40,14 +45,15 @@ exports.login = async (req, res, next) => {
 
     const token = jwt.sign(
       { id: user._id, role: user.role, fullName: user.fullName, gender: user.gender },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN },
+      process.env.JWT_SECRET || 'onus_fitness_jwt_secret_key_2024',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
     );
     res.json({
       token,
       user: { id: user._id, fullName: user.fullName, role: user.role, gender: user.gender },
     });
   } catch (error) {
+    console.error('Login error:', error);
     next(error);
   }
 };
